@@ -1,12 +1,12 @@
 from tqdm import tqdm
 from pymol import cmd
 import os
-from Config import Config
+from Academy.Config import Config
 
 config = Config()
 
 def load_ligand(pdb_code):
-    path_ligand = f"coreset/{pdb_code}/{pdb_code}_ligand.mol2"
+    path_ligand = f"{config.coreset}/{pdb_code}/{pdb_code}_ligand.mol2"
     ligand_name = f"ligand_{pdb_code}"
     cmd.load(path_ligand, ligand_name)
     cmd.select("selection_name", ligand_name)
@@ -24,7 +24,7 @@ center_y = {round(output[1], 2)}
 center_z = {round(output[2], 2)}
 exhaustiveness = {exhaustiveness}
 """
-    coreset_folder = "coreset"
+    coreset_folder = config.coreset
     pdb_folder = os.path.join(coreset_folder, pdb_code)
     os.makedirs(pdb_folder, exist_ok=True)
     config_file_path = os.path.join(pdb_folder, "config.txt")
@@ -44,10 +44,10 @@ def calculate_box_dimensions_cmd(molecule_path, buffer_size):
     return x_size, y_size, z_size
 
 
-for pdb in tqdm(os.listdir("coreset"), desc="Processing PDBs"):
+for pdb in tqdm(os.listdir(config.coreset), desc="Processing PDBs"):
     print(pdb)
     create_config_file(pdb, config.docking_params['exhaustiveness'])
-    subdir = os.path.join(os.getcwd(), "coreset", pdb)
+    subdir = os.path.join(os.getcwd(), config.coreset, pdb)
     ligand_file_path = os.path.join(subdir, f"{pdb}_ligand.sdf")
 
     if os.path.exists(ligand_file_path):

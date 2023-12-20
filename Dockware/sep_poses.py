@@ -1,13 +1,13 @@
 import os
 import subprocess
 from tqdm import tqdm
-from Config import Config
+from Academy.Config import Config
 config = Config()
 
 nposes = config.docking_params['nposes']
 PATH_vina = config.executables['vina']
 pdb_codes_list = config.pdb_list[0:5] #### Skpped number 55
-PATH_coreset = "../coreset"
+PATH_coreset = config.coreset
 
 print(os.listdir(PATH_coreset))
 # Percorrendo as pastas dentro da pasta "coreset"

@@ -1,12 +1,14 @@
+import os
+
 from Bio import PDB
-from Config import Config
+from Academy.Config import Config
 from tqdm import tqdm
 
-
 config = Config()
+
 PATH_mglt = config.softwares
-pdb_list = config.pdb_list
-print(pdb_list)
+pdb_list =  config.pdb_list
+
 
 def remove_non_standard_residues(pdb_code):
     # Specify the input and output PDB files

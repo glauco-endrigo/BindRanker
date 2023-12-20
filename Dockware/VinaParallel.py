@@ -1,6 +1,6 @@
 import pandas as pd
 import os
-from Config import Config
+from Academy.Config import Config
 import multiprocessing as mp
 from tqdm import tqdm
 import time
@@ -18,7 +18,7 @@ logging.basicConfig(filename='docking_log.txt', level=logging.INFO, format='%(as
 
 def perform_docking(args):
     folder, log_queue = args
-    folder_path = os.path.join("coreset", folder)
+    folder_path = os.path.join(config.coreset, folder)
 
 
     if os.path.isdir(folder_path):
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     pool = mp.Pool(processes=mp.cpu_count())
     #pool = mp.Pool(processes=2)
     # Use tqdm for the progress bar
-    for _ in tqdm(pool.imap_unordered(perform_docking, [(code, log_queue) for code in os.listdir("coreset")]),
+    for _ in tqdm(pool.imap_unordered(perform_docking, [(code, log_queue) for code in os.listdir(config.coreset)]),
                    desc="Processing PDB codes"):
         pass
 

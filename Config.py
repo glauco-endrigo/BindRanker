@@ -4,7 +4,7 @@ import pandas as pd
 
 class Config():
     def __init__(self):
-        self.root = './'
+        self.root = ".."
         self.project_name = 'master'
         if not os.path.exists(f'{self.root}/{self.project_name}'):
             os.makedirs(f'{self.root}/{self.project_name}')
@@ -21,7 +21,7 @@ class Config():
 
         if not os.path.exists(f"{self.data}"):
             os.makedirs(f"{self.data}")
-        #self.pdb_list = list(pd.read_csv("../Data/list_pdbs_to_dock_219.csv")['0'])
+        self.pdb_list = list(os.listdir(self.coreset))
 
         self.model_args = {'seed': 42,
                            'savepath': f'{self.root}/{self.project_name}/',
