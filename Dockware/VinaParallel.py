@@ -1,6 +1,6 @@
 import pandas as pd
 import os
-from Academy.Config import Config
+from BindRanker.Config import Config
 import multiprocessing as mp
 from tqdm import tqdm
 import time

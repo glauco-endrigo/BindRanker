@@ -1,5 +1,5 @@
 
-from Academy.Config import Config
+from BindRanker.Config import Config
 import os
 import shutil
 

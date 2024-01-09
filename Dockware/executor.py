@@ -11,10 +11,10 @@ current_directory = os.path.dirname(os.path.realpath(__file__))
 
 # List of scripts to run
 scripts_to_run = ["remove_non_standard_residues.py",
-    "make_pdbqt.py",
-    "config_generator.py",
-    "VinaParallel.py",
-    "sep_poses.py"
+                  "make_pdbqt.py",
+                  "config_generator.py",
+                  "VinaParallel.py",
+                  "sep_poses.py"
 ]
 
 # Run each script

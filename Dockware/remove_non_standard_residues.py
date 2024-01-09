@@ -1,13 +1,44 @@
 import os
 
 from Bio import PDB
-from Academy.Config import Config
+from BindRanker.Config import Config
 from tqdm import tqdm
+from pdbfixer import PDBFixer
+from openmm.app import PDBFile
 
 config = Config()
 
 PATH_mglt = config.softwares
-pdb_list =  config.pdb_list
+pdb_list = config.pdb_list
+
+
+def fix_pdb_structure(pdb_code):
+    # Specify the input and output PDB files
+    input_file = f'{config.coreset}/{pdb_code}/{pdb_code}_protein.pdb'
+    output_file = f'{config.coreset}/{pdb_code}/{pdb_code}_protein_fixed.pdb'
+
+    # Create a PDBFixer instance
+    pdbfixer = PDBFixer(filename=input_file)
+
+    # Apply fixes
+    pdbfixer.findMissingResidues()
+    pdbfixer.findMissingAtoms()
+    pdbfixer.addMissingAtoms()
+
+    # Add missing heavy atoms
+    pdbfixer.addMissingHydrogens(7.0)  # Assuming a pH of 7.0
+
+    # Convert non-standard residues to their standard equivalents
+    pdbfixer.findNonstandardResidues()
+    pdbfixer.replaceNonstandardResidues()
+
+    # Delete unwanted heterogens
+    pdbfixer.removeHeterogens(keepWater=True)  # Keeping water molecules
+
+    # Save the corrected structure
+    PDBFile.writeFile(pdbfixer.topology, pdbfixer.positions, open(output_file, 'w'))
+
+    print(f"Structure issues fixed. Check the output file: {output_file}")
 
 
 def remove_non_standard_residues(pdb_code):
@@ -35,8 +66,9 @@ def remove_non_standard_residues(pdb_code):
 
 def main():
     for pdb_code in tqdm(pdb_list):
-        remove_non_standard_residues(pdb_code)
-
+        # First, fix the structure
+        fix_pdb_structure(pdb_code)
+        #remove_non_standard_residues(pdb_code)
 
 
 if __name__ == "__main__":

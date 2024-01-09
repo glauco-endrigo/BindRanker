@@ -1,7 +1,7 @@
 from tqdm import tqdm
 from pymol import cmd
 import os
-from Academy.Config import Config
+from BindRanker.Config import Config
 
 config = Config()
 

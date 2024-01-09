@@ -1,7 +1,7 @@
 import os
 import subprocess
 from tqdm import tqdm
-from Academy.Config import Config
+from BindRanker.Config import Config
 config = Config()
 
 nposes = config.docking_params['nposes']
