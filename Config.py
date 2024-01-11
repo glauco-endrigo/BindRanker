@@ -4,8 +4,8 @@ import pandas as pd
 
 class Config():
     def __init__(self):
-        self.root = ".."
-        self.project_name = 'master'
+        self.root = '..'
+        self.project_name = 'Datahub'
         if not os.path.exists(f'{self.root}/{self.project_name}'):
             os.makedirs(f'{self.root}/{self.project_name}')
 
