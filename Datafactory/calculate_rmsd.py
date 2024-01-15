@@ -17,15 +17,27 @@ os.makedirs(data_directory, exist_ok=True)
 csv_exists = os.path.exists(csv_file_path)
 print(csv_exists)
 
-def remove_hydrogens(structure):
-    # Create a list to hold non-hydrogen atoms
-    non_hydrogen_atoms = []
+from rdkit import Chem
+from rdkit.Chem import AllChem
 
-    for atom in structure.get_atoms():
-        if atom.element != 'H':
-            non_hydrogen_atoms.append(atom)
 
-    return non_hydrogen_atoms
+def calculate_rmsd(docked_ligand_path, crystal_ligand_path):
+    docked_ligand = Chem.MolFromPDBFile(docked_ligand_path)
+    crystal_ligand = Chem.MolFromPDBFile(crystal_ligand_path)
+
+    if docked_ligand is not None and crystal_ligand is not None:
+        try:
+            # Remove hydrogens
+            docked_ligand = Chem.RemoveHs(docked_ligand)
+            crystal_ligand = Chem.RemoveHs(crystal_ligand)
+
+            # Calculate RMSD
+            rmsd = AllChem.CalcRMS(docked_ligand, crystal_ligand)
+            return rmsd
+        except Exception as e:
+            return f"Error calculating RMSD: {e}"
+    else:
+        return "Error loading ligand structures."
 
 
 with open(csv_file_path, "a", newline="") as csv_file:
@@ -42,32 +54,15 @@ with open(csv_file_path, "a", newline="") as csv_file:
         path_to_results = os.path.join(path_to_pdb, "results")
 
         for pose_rank in range(1, nposes + 1):
-            print("pose:", pose_rank)
             crystal_path = os.path.join(path_to_pdb, "ligand.pdb")
             docked_ligand_path = os.path.join(path_to_results, f"pose_{pose_rank}.pdb")
 
-            parser = PDB.PDBParser()
-
-            print("crystal: ", crystal_path)
-            print("docked_ligand: ", docked_ligand_path)
-
+            #print("crystal: ", crystal_path)
+            #print("docked_ligand: ", docked_ligand_path)
             try:
-                pose_structure = parser.get_structure('pose', docked_ligand_path)
-                crystal_structure = parser.get_structure('crystal', crystal_path)
+                rmsd = calculate_rmsd(docked_ligand_path, crystal_path)
+                rmsd = round(rmsd, 2)
+                csv_writer.writerow({"pdb": pdb, "poserank": pose_rank, "RMSD": str(rmsd)})
+                #print(f'RMSD between pose and crystal (without hydrogens): {rmsd:.2f} Å')
             except Exception as e:
-                print(e)
-                continue
-
-            # Remove hydrogen atoms from both structures
-            pose_structure_atoms = remove_hydrogens(pose_structure)
-            crystal_structure_atoms = remove_hydrogens(crystal_structure)
-
-            # Make sure both structures have the same number of atoms for comparison.
-            if len(pose_structure_atoms) != len(crystal_structure_atoms):
-                print("The two structures have different numbers of non-hydrogen atoms.")
-            else:
-                # Calculate the RMSD between the non-hydrogen atoms.
-                rmsd = np.sqrt(np.mean(np.square(np.array([a1.coord for a1 in pose_structure_atoms]) - np.array(
-                    [a2.coord for a2 in crystal_structure_atoms]))))
-                csv_writer.writerow({"pdb": pdb, "poserank": pose_rank, "RMSD": f"{rmsd:.2f}"})
-                print(f'RMSD between pose and crystal (without hydrogens): {rmsd:.2f} Å')
+                print(f"Pose {pose_rank} does not exist:")
