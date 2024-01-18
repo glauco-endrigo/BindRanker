@@ -38,7 +38,7 @@ import seaborn as sns
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-from Config import Config
+from BindRanker.Config import Config
 from torch_geometric.nn import GATConv, global_mean_pool
 config = Config()
 
@@ -46,71 +46,84 @@ patience = config.model_args["patience"]
 
 
 ####  GATModel
-
+max_size = 650
 class GATModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size):
         super(GATModel, self).__init__()
         self.batch_size = batch_size
         self.conv1 = GATConv(input_dim, hidden_dim, heads=1)  # You can adjust the number of heads
-        self.conv2 = GATConv(hidden_dim, self.batch_size, heads=1)  # Output dimension set to 1
-        self.fc = nn.Linear(127, 1)  # Initialize fc layer as None
+
+        self.conv2 = GATConv(hidden_dim, hidden_dim, heads=1)  # You can adjust the number of heads
+        self.conv3 = GATConv(hidden_dim, hidden_dim, heads=1)  # You can adjust the number of heads
+
+        self.conv4 = GATConv(hidden_dim, self.batch_size, heads=1)  # Output dimension set to 1
+
+
+        self.fc = nn.Linear(max_size, 1)  # Initialize fc layer as None
 
     def forward(self, data):
         x_s, x_t, edge_index, distances, batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.batch
 
         # print("data.batch ALTERED: ", data.batch)
-        print(20 * "*")
+        #print(20 * "*")
 
-        # print("batch: ", data.batch.shape,"\n", data.batch)
-        print("x_s.shape: ", x_s.shape, "x_t.shape: ", x_t.shape, end='\n\n')
-        print("x_s: ", x_s, "x_t: ", x_t, end='\n\n')
+        ## print("batch: ", data.batch.shape,"\n", data.batch)
+        #print("x_s.shape: ", x_s.shape, "x_t.shape: ", x_t.shape, end='\n\n')
+        ##print("x_s: ", x_s, "x_t: ", x_t, end='\n\n')
 
         # Pad the sequences to have the same length
 
         x = torch.cat((x_s, x_t), dim=0)  # Concatenate features
-        print(x, end='\n\n')
-        print("x.shape after cat", x.shape, end='\n\n')
-        print(20 * "*")
+        #print(x[0:5], end='\n\n')
+        #print("x.shape after cat", x.shape, end='\n\n')
+        #print(20 * "*")
 
-        target_size = 127
+        target_size = max_size
         padding_needed = max(target_size - x.shape[0], 0)
         padding = (0, 0, 0, padding_needed)  # Assuming you want to pad the first dimension only
         x = F.pad(x, padding, mode='constant', value=0)
-        print("x.shape after PADDING", x.shape)
+        #print("x.shape after PADDING", x.shape)
+        #print("x after PADDING", x[0:5])
+        #print(40 * "*")
 
         x = self.conv1(x, edge_index, edge_attr=distances)
-        print("x after conv1: ", x, end='\n\n')
-        print("x shape after conv1: ", x.shape, end='\n\n')
-        print(20 * "*")
-
+        #print("x after conv1: ", x[0:5], end='\n\n')
+        #print("x shape after conv1: ", x.shape, end='\n\n')
         x = torch.relu(x)
-        print("x.shape after relu 1", x.shape, end='\n\n')
-        print(20 * "*")
+        #print("x.shape after relu 1", x.shape, end='\n\n')
+        #print(40 * "*")
 
-        x = self.conv2(x, edge_index, edge_attr=distances)
-        print("x shape after conv2: ", x.shape, end='\n\n')
-        print("x after conv2: ", x, end='\n\n')
-        print(20 * "*")
+     #   x = self.conv2(x, edge_index, edge_attr=distances)
+        #print("x shape after conv2: ", x.shape, end='\n\n')
+     #   x = torch.relu(x)
+        #print("x.shape after relu 2", x.shape, end='\n\n')
+        #print(40 * "*")
 
-        #x = torch.relu(x)
+       #  x = self.conv3(x, edge_index, edge_attr=distances)
+        #print("x shape after conv 3: ", x.shape, end='\n\n')
+       #  x = torch.relu(x)
+        #print("x.shape after relu 3", x.shape, end='\n\n')
+        #print(40 * "*")
+
+        x = self.conv4(x, edge_index, edge_attr=distances)
+        #print("x shape after conv 4: ", x.shape, end='\n\n')
+        ## print("x after conv2: ", x, end='\n\n')
         x = F.leaky_relu(x, negative_slope=0.01)
-        print("x.shape after relu 2", x.shape, end='\n\n')
-        print(20 * "*")
+        ##print("x.shape after relu 4", x.shape, end='\n\n')
+        #print(40 * "*")
 
-        x = x.view(self.batch_size, 127)
-        print("x after .view(4, 10):", x)
-
-        print("x shape after self.fc(x): ", self.fc(x).shape)
+        x = x.view(self.batch_size, x.shape[0])
+        #print("x.shape .view():", x.shape)
+        ##print("x after .view():", x)
+        #print("x shape after self.fc(x): ", self.fc(x).shape)
         x = self.fc(x)
-        print("x.shape after fc(x)", x.shape, end='\n\n')
-
+        #print("x.shape after fc(x)", x.shape, end='\n\n')
         x = x.squeeze().unsqueeze(0)
-        print("x.shape after squeeze()", x.shape, end='\n\n')
-
+        #print("x.shape after squeeze()", x.shape, end='\n\n')
         x = torch.sigmoid(x)
-        print("output, after sigmoid", x, end='\n\n')
+        ##print("output, after sigmoid", x, end='\n\n')
 
-        print(100 * '#')
+        #print(70 * '%*%')
         return x
 
     def reset_parameters(self):
@@ -120,7 +133,70 @@ class GATModel(nn.Module):
 
 
 forward_desc = '''
+    def forward(self, data):
+        x_s, x_t, edge_index, distances, batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.batch
 
+        # print("data.batch ALTERED: ", data.batch)
+        #print(20 * "*")
+
+        ## print("batch: ", data.batch.shape,"\n", data.batch)
+        #print("x_s.shape: ", x_s.shape, "x_t.shape: ", x_t.shape, end='\n\n')
+        ##print("x_s: ", x_s, "x_t: ", x_t, end='\n\n')
+
+        # Pad the sequences to have the same length
+
+        x = torch.cat((x_s, x_t), dim=0)  # Concatenate features
+        #print(x[0:5], end='\n\n')
+        #print("x.shape after cat", x.shape, end='\n\n')
+        #print(20 * "*")
+
+        target_size = max_size
+        padding_needed = max(target_size - x.shape[0], 0)
+        padding = (0, 0, 0, padding_needed)  # Assuming you want to pad the first dimension only
+        x = F.pad(x, padding, mode='constant', value=0)
+        #print("x.shape after PADDING", x.shape)
+        #print("x after PADDING", x[0:5])
+        #print(40 * "*")
+
+        x = self.conv1(x, edge_index, edge_attr=distances)
+        #print("x after conv1: ", x[0:5], end='\n\n')
+        #print("x shape after conv1: ", x.shape, end='\n\n')
+        x = torch.relu(x)
+        #print("x.shape after relu 1", x.shape, end='\n\n')
+        #print(40 * "*")
+
+     #   x = self.conv2(x, edge_index, edge_attr=distances)
+        #print("x shape after conv2: ", x.shape, end='\n\n')
+     #   x = torch.relu(x)
+        #print("x.shape after relu 2", x.shape, end='\n\n')
+        #print(40 * "*")
+
+       #  x = self.conv3(x, edge_index, edge_attr=distances)
+        #print("x shape after conv 3: ", x.shape, end='\n\n')
+       #  x = torch.relu(x)
+        #print("x.shape after relu 3", x.shape, end='\n\n')
+        #print(40 * "*")
+
+        x = self.conv4(x, edge_index, edge_attr=distances)
+        #print("x shape after conv 4: ", x.shape, end='\n\n')
+        ## print("x after conv2: ", x, end='\n\n')
+        x = F.leaky_relu(x, negative_slope=0.01)
+        ##print("x.shape after relu 4", x.shape, end='\n\n')
+        #print(40 * "*")
+
+        x = x.view(self.batch_size, x.shape[0])
+        #print("x.shape .view():", x.shape)
+        ##print("x after .view():", x)
+        #print("x shape after self.fc(x): ", self.fc(x).shape)
+        x = self.fc(x)
+        #print("x.shape after fc(x)", x.shape, end='\n\n')
+        x = x.squeeze().unsqueeze(0)
+        #print("x.shape after squeeze()", x.shape, end='\n\n')
+        x = torch.sigmoid(x)
+        ##print("output, after sigmoid", x, end='\n\n')
+
+        #print(70 * '%*%')
+        return x
 '''
 
 
@@ -156,9 +232,9 @@ def validate_model(model, val_loader, criterion):
         for batch_data in val_loader:
             output = model(batch_data)
             target = batch_data.y
-            print("batch_data: ", batch_data)
-            print("output: ", output)
-            print("target: ", target, end="\n\n")
+            #print("batch_data: ", batch_data)
+            #print("output: ", output)
+            #print("target: ", target, end="\n\n")
             loss = criterion(output, target)
             val_loss += loss.item()
             val_true.extend(target.tolist())
@@ -206,14 +282,14 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
     for epoch in range(num_epochs):
-        print("epoch: ", epoch)
+        #print("epoch: ", epoch)
         # Training loop
         train_loss = train_model_with_early_stopping(model, train_loader, val_loader, optimizer, criterion, patience)
 
         # Validation loop
         val_loss, accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP = validate_model(
             model, val_loader, criterion)
-
+        print('precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP)
         # print("val_loss: ", val_loss)
         # print("best_val_loss: ", best_val_loss)
         # Validation loop
@@ -264,7 +340,7 @@ def k_fold_cross_validation(model, dataset_list, num_folds, batch_size, num_epoc
         fold_metrics = compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_epochs, batch_size)
         fold_metrics['Fold'] = fold + 1
         df_metrics = df_metrics.append(fold_metrics, ignore_index=True)
-
+        #print(fold_metrics)
     return df_metrics
 
 
@@ -297,7 +373,7 @@ filtered_data_list_num_nodes = [data for data in dataset_list if data.num_nodes 
 ##### Filter data list
 filtered_data_list_descriptors = [data for data in filtered_data_list_num_nodes if
                                   data.x_s.shape[0] > 0 and data.x_t.shape[0] > 0]
-filtered_data_list = filtered_data_list_descriptors[0:400]
+filtered_data_list = filtered_data_list_descriptors[0:2000]
 
 #### Data info
 label_distribution = dict(Counter([label.y.tolist() for label in filtered_data_list]))
@@ -328,13 +404,23 @@ class BalancedBCEWithLogitsLoss(nn.Module):
 
 
 # Initialize the model
-model = GATModel(input_dim=7, hidden_dim=256, batch_size=config.model_args["batch_size"])
+model = GATModel(input_dim=7, hidden_dim=400, batch_size=config.model_args["batch_size"])
 
 # Define loss and optimizer
 #criterion = nn.BCEWithLogitsLoss()
-criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(1.6))
-optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'])
+criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(12))
+#optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'])
 import time
+
+
+import torch.optim as optim
+
+# Assuming you have a model and a configuration named 'model' and 'config' respectively
+optimizer = optim.SGD(model.parameters(), lr=config.model_args['lr'])
+
+# Rest of your code using the optimizer...
+
+
 # Main code
 if __name__ == "__main__":
     # Define your model, optimizer, criterion, dataset_list, num_folds, batch_size, and num_epochs here
@@ -350,7 +436,7 @@ if __name__ == "__main__":
     end_time = time.time()  # Record the end time
     execution_time = end_time - start_time
 
-print(mean_metrics.head(1))
+#print(mean_metrics.head(1))
 
 ## Result analysis
 ##### update_model_info Function
@@ -388,6 +474,9 @@ def update_model_info(df, config):
     df['execution_time (abs H)'] = [execution_time/3600] * len(df)
     df['execution_time (sec)'] = [execution_time] * len(df)
 
+    #df['description'] = " "
+    #df['date'] = " "
+
     # Print the current counter
     print(counter)
 
@@ -401,15 +490,18 @@ def update_metrics_file(df, metrics_file):
         existing_df = pd.concat([df, existing_df], axis=0, ignore_index=True)
         existing_df.to_csv(metrics_file, index=False)
 
+if not os.path.exists("../results"):
+    os.makedirs("../results")
+
 ###### Best metrics
 datos = mean_metrics.tail(1)
 update_model_info(datos, config)
-update_metrics_file(datos, metrics_file="results/metrics_file_model.csv")
+update_metrics_file(datos, metrics_file="../results/metrics_file_model.csv")
 
 ###### All metrics
 update_model_info(mean_metrics, config)
-update_metrics_file(mean_metrics, metrics_file="results/all_metrics_file.csv")
-all_metrics_from_all_models = pd.read_csv("all_metrics_file.csv")
+update_metrics_file(mean_metrics, metrics_file="../results/all_metrics_file.csv")
+all_metrics_from_all_models = pd.read_csv("../results/all_metrics_file.csv")
 
 def plot_loss_vs_epochs(df_metrics):
     # Group the data by 'Epoch' and calculate the mean validation loss for each epoch across all folds
@@ -440,8 +532,6 @@ def plot_loss_vs_epochs(df_metrics):
 # Assuming you have executed k-fold cross-validation and have 'df_metrics' available
 plot_loss_vs_epochs(df_metrics)
 
-if not os.path.exists("results"):
-    os.makedirs("results")
 
 
 ###### Graph all results
