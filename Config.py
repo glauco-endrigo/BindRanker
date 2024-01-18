@@ -28,8 +28,8 @@ class Config():
                            'batch_size': 1,
                            'epochs': 20,
                            'nfolds': 5,
-                           'patience': 10,
-                           "lr": 0.7,
+                           'patience': 15,
+                           "lr": 0.01,
                            "gmp": 10,
                            }
         self.label_args = {'class_def': "rmsd",
