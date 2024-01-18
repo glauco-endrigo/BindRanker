@@ -14,8 +14,8 @@ pdb_list = config.pdb_list
 
 def fix_pdb_structure(pdb_code):
     # Specify the input and output PDB files
-    input_file = f'{config.coreset}/{pdb_code}/{pdb_code}_protein.pdb'
-    output_file = f'{config.coreset}/{pdb_code}/{pdb_code}_protein_fixed.pdb'
+    input_file = f'{config.set}/{pdb_code}/{pdb_code}_protein.pdb'
+    output_file = f'{config.set}/{pdb_code}/{pdb_code}_protein.pdb'
 
     # Create a PDBFixer instance
     pdbfixer = PDBFixer(filename=input_file)
@@ -43,7 +43,7 @@ def fix_pdb_structure(pdb_code):
 
 def remove_non_standard_residues(pdb_code):
     # Specify the input and output PDB files
-    file = f'{config.coreset}/{pdb_code}/{pdb_code}_protein.pdb'
+    file = f'{config.set}/{pdb_code}/{pdb_code}_protein.pdb'
 
     # Create a structure object from the input PDB file
     parser = PDB.PDBParser(QUIET=True)

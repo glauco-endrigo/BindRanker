@@ -21,7 +21,7 @@ def prepare_receptor(pdb_file):
 
 
 def process_pdb_receptor(pdb_code):
-    pdb_file = f"{config.coreset}/{pdb_code}/{pdb_code}_protein.pdb"
+    pdb_file = f"{config.set}/{pdb_code}/{pdb_code}_protein.pdb"
     if os.path.isfile(pdb_file):
         treated_file = prepare_receptor(pdb_file)
         destination_file = os.path.join(os.path.dirname(pdb_file), os.path.basename(treated_file))
@@ -40,7 +40,7 @@ def prepare_ligand(pdb_file):
 
 
 def process_pdb_ligand(pdb_code):
-    folder_path = f"{config.coreset}/{pdb_code}"
+    folder_path = f"{config.set}/{pdb_code}"
 
     pdb_file = f"{pdb_code}_ligand.mol2"
     original_directory = os.getcwd()

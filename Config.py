@@ -16,12 +16,12 @@ class Config():
         if not os.path.exists(f"{self.root}/{self.project_name}/processed_dir"):
             os.makedirs(f"{self.root}/{self.project_name}/processed_dir")
 
-        self.coreset = f"{self.root}/coreset"
+        self.set = f"{self.root}/coreset"
         self.data = f"{self.root}/{self.project_name}/Data"
 
         if not os.path.exists(f"{self.data}"):
             os.makedirs(f"{self.data}")
-        self.pdb_list = list(os.listdir(self.coreset))
+        self.pdb_list = list(os.listdir(self.set))
 
         self.model_args = {'seed': 42,
                            'savepath': f'{self.root}/{self.project_name}/',

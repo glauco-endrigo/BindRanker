@@ -6,8 +6,8 @@ config = Config()
 
 nposes = config.docking_params['nposes']
 PATH_vina = config.executables['vina']
-pdb_codes_list = os.listdir(config.coreset) #### Skpped number 55
-PATH_coreset = config.coreset
+pdb_codes_list = os.listdir(config.set) #### Skpped number 55
+PATH_coreset = config.set
 
 print(os.listdir(PATH_coreset))
 # Percorrendo as pastas dentro da pasta "coreset"

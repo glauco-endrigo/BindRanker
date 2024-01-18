@@ -7,7 +7,7 @@ from BindRanker.Config import Config
 
 config = Config()
 nposes = config.docking_params['nposes']
-files_directory = config.coreset
+files_directory = config.set
 data_directory = config.data
 csv_file_path = os.path.join(data_directory, "rmsd.csv")
 
