@@ -4,6 +4,7 @@ import os
 from BindRanker.Config import Config
 
 config = Config()
+pdb_list = config.pdb_list
 
 def load_ligand(pdb_code):
     path_ligand = f"{config.set}/{pdb_code}/{pdb_code}_ligand.mol2"
@@ -44,7 +45,7 @@ def calculate_box_dimensions_cmd(molecule_path, buffer_size):
     return x_size, y_size, z_size
 
 
-for pdb in tqdm(os.listdir(config.set), desc="Processing PDBs"):
+for pdb in tqdm(pdb_list, desc="Processing PDBs"):
     print(pdb)
     create_config_file(pdb, config.docking_params['exhaustiveness'])
     subdir = os.path.join(os.getcwd(), config.set, pdb)

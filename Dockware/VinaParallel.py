@@ -70,7 +70,7 @@ if __name__ == '__main__':
     pool = mp.Pool(processes=mp.cpu_count())
     #pool = mp.Pool(processes=2)
     # Use tqdm for the progress bar
-    for _ in tqdm(pool.imap_unordered(perform_docking, [(code, log_queue) for code in os.listdir(config.set)]),
+    for _ in tqdm(pool.imap_unordered(perform_docking, [(code, log_queue) for code in pdb_codes_list]),
                    desc="Processing PDB codes"):
         pass
 

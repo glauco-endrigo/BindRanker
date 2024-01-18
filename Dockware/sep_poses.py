@@ -6,9 +6,8 @@ config = Config()
 
 nposes = config.docking_params['nposes']
 PATH_vina = config.executables['vina']
-pdb_codes_list = os.listdir(config.set) #### Skpped number 55
+pdb_codes_list = config.pdb_list #### Skpped number 55
 PATH_coreset = config.set
-
 print(os.listdir(PATH_coreset))
 # Percorrendo as pastas dentro da pasta "coreset"
 for folder in tqdm(os.listdir(PATH_coreset), desc="Processing PDB codes"):# os.listdir(coreset_path):
