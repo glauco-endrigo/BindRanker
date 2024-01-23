@@ -10,7 +10,7 @@ pdb_codes_list = config.pdb_list #### Skpped number 55
 PATH_coreset = config.set
 print(os.listdir(PATH_coreset))
 # Percorrendo as pastas dentro da pasta "coreset"
-for folder in tqdm(os.listdir(PATH_coreset), desc="Processing PDB codes"):# os.listdir(coreset_path):
+for folder in tqdm(pdb_codes_list, desc="Processing PDB codes"):# os.listdir(coreset_path):
     folder_path = os.path.join(PATH_coreset, folder)
 
     # Verificando se é um diretório
@@ -18,26 +18,30 @@ for folder in tqdm(os.listdir(PATH_coreset), desc="Processing PDB codes"):# os.l
         output_dir = os.path.join(folder_path, "results")
         result_path = os.path.join(output_dir, "result.pdbqt")
         # Lendo o arquivo de resultado e separando as poses
-        with open(result_path, "r") as f: # File being read in read mode r
-            content = f.read()
-        poses = content.split("ENDMDL")
-        # Salvando cada pose em um arquivo separado
-        for idx, pose in enumerate(poses):
-            if idx + 1 > nposes:
-                break
 
-            print(idx + 1)
+        try:
+            with open(result_path, "r") as f: # File being read in read mode r
+                content = f.read()
+            poses = content.split("ENDMDL")
+            # Salvando cada pose em um arquivo separado
+            for idx, pose in enumerate(poses):
+                if idx + 1 > nposes:
+                    break
 
-            pose_filename = os.path.join(output_dir, f"pose_{idx + 1}.pdbqt")
-            with open(pose_filename, "w") as f_pose:
-                f_pose.write(pose.strip() + "ENDMDL\n")
+                print(idx + 1)
 
+                pose_filename = os.path.join(output_dir, f"pose_{idx + 1}.pdbqt")
+                with open(pose_filename, "w") as f_pose:
+                    f_pose.write(pose.strip() + "ENDMDL\n")
+        except Exception as e:
+            print(e)
+            pass
 
 print("Separação das poses concluída para todos os ligantes e proteínas!")
 
 
 # Loop through folders in the coreset directory
-for folder in tqdm(os.listdir(PATH_coreset), desc="Processing PDB codes"):  # Assuming you've defined pdb_codes_list somewhere
+for folder in tqdm(pdb_codes_list, desc="Processing PDB codes"):  # Assuming you've defined pdb_codes_list somewhere
     folder_path = os.path.join(PATH_coreset, folder)
     print(folder)
 
