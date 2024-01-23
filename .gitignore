@@ -159,13 +159,19 @@ Datafactory/Data/
 Model/run_model_v1.py
 
 Datafactory/errors.txt
-Datahub/
+
 Dockware/docking_log.txt
 Model/model.ipynb
 coreset/
 errors.txt
 executables/
 results/
+
+#Datahub
+Datahub/Data 
+Datahub/pdbs_
+Datahub/processed_dir  
+Datahub/protgraph_dict.pkl
 
 
 # PyCharm
