@@ -40,10 +40,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from BindRanker.Config import Config
 from torch_geometric.nn import GATConv, global_mean_pool
+from datetime import datetime
+from sklearn.metrics import precision_recall_curve, auc
+
+# Get current date and time
+current_datetime = datetime.today()
+
+# Format the date and time as a string with the exact hour
+formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
 config = Config()
 
 patience = config.model_args["patience"]
 
+# Get today's date
 
 ####  GATModel
 max_size = 650
@@ -241,6 +251,12 @@ def validate_model(model, val_loader, criterion):
             val_pred.extend((output > 0.5).float().tolist())  # Assuming binary classification
             val_probs.extend(output.tolist())
 
+    precision, recall, thresholds = precision_recall_curve(val_true, val_probs)
+
+    # Calculate AUC-PR
+    auc_pr = auc(recall, precision)
+
+
     accuracy = accuracy_score(val_true, val_pred)
     precision = precision_score(val_true, val_pred)
     recall = recall_score(val_true, val_pred)
@@ -262,10 +278,10 @@ def validate_model(model, val_loader, criterion):
     neg_precision = TN / (TN + FN)
     neg_recall = TN / (TN + FP)  # Assuming FP is false positives
 
-    TN, FN, TP, FP
+    #TN, FN, TP, FP
 
     return val_loss / len(
-        val_loader.dataset), accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP
+        val_loader.dataset), accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP, auc_pr
 
 
 #### Compute fold metrics for each epoch
@@ -275,7 +291,7 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
     no_improvement = 0  # Counter for epochs with no improvement
 
     columns = ['Epoch', 'Validation Loss', 'Accuracy', 'Precision', 'Recall', 'F1-Score', "balanced_acc", "auc_roc",
-               "neg_precision", "neg_recall", "TN", "FN", "TP", "FP"]
+               "neg_precision", "neg_recall", "TN", "FN", "TP", "FP", "auc_pr"]
     df_fold_metrics = pd.DataFrame(columns=columns)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
@@ -287,9 +303,9 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
         train_loss = train_model_with_early_stopping(model, train_loader, val_loader, optimizer, criterion, patience)
 
         # Validation loop
-        val_loss, accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP = validate_model(
+        val_loss, accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP, auc_pr = validate_model(
             model, val_loader, criterion)
-        print('precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP)
+        print('precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP, 'auc_pr:', auc_pr)
         # print("val_loss: ", val_loss)
         # print("best_val_loss: ", best_val_loss)
         # Validation loop
@@ -316,7 +332,7 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
                                                      , "FN": FN
                                                      , "TP": TP
                                                      , "FP": FP
-
+                                                     , "auc_pr": auc_pr
                                                   }, ignore_index=True)
 
     return df_fold_metrics
@@ -326,7 +342,7 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
 # Define a function to perform k-fold cross-validation
 def k_fold_cross_validation(model, dataset_list, num_folds, batch_size, num_epochs):
     columns = ['Fold', 'Epoch', 'Validation Loss', 'Accuracy', 'Precision', 'Recall', 'F1-Score', "balanced_acc",
-               "auc_roc", "neg_precision", "neg_recall"]
+               "auc_roc", "neg_precision", "neg_recall","auc_pr"]
     df_metrics = pd.DataFrame(columns=columns)
 
     skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=42)
@@ -377,6 +393,8 @@ filtered_data_list = filtered_data_list_descriptors[0:2000]
 
 #### Data info
 label_distribution = dict(Counter([label.y.tolist() for label in filtered_data_list]))
+dist = ", ".join([f'{key} : {value} ({value/sum(label_distribution.values()):.2f}%)' for key, value in label_distribution.items()])
+
 amount_of_graphs_used_to_train = len(filtered_data_list)
 
 ## Dataset info
@@ -468,15 +486,12 @@ def update_model_info(df, config):
     df["gmp"] = [config.model_args["gmp"]] * len(df)
     df['Model name'] = model_name
     df['forward_desc'] = [forward_desc] * len(df)  # You need to define forward_desc
-    df['label_distribution'] = [label_distribution] * len(df)  # You need to define label_distribution
-    df['amount_of_graphs_used_to_train'] = [amount_of_graphs_used_to_train] * len(df)  # You need to define amount_of_graphs_used_to_train
+    df['Distribution'] = [dist] * len(df)  # You need to define label_distribution
+    df['Qtd_graphs'] = [amount_of_graphs_used_to_train] * len(df)  # You need to define amount_of_graphs_used_to_train
     df['node_descriptors'] = [config.node_descriptors] * len(df)
-    df['execution_time (abs H)'] = [execution_time/3600] * len(df)
-    df['execution_time (sec)'] = [execution_time] * len(df)
-
-    #df['description'] = " "
-    #df['date'] = " "
-
+    df['Time (abs H)'] = [execution_time/3600] * len(df)
+    df['Time (sec)'] = [execution_time] * len(df)
+    df['date'] = [formatted_datetime] * len(df)
     # Print the current counter
     print(counter)
 

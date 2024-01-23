@@ -21,12 +21,12 @@ class Config():
 
         if not os.path.exists(f"{self.data}"):
             os.makedirs(f"{self.data}")
-        self.pdb_list = list(os.listdir(self.set))
+        self.pdb_list = pd.read_csv(f"../Datahub/pdbs_refined_set.csv")['PDB code'].to_list()
 
         self.model_args = {'seed': 42,
                            'savepath': f'{self.root}/{self.project_name}/',
                            'batch_size': 1,
-                           'epochs': 20,
+                           'epochs': 5,
                            'nfolds': 5,
                            'patience': 15,
                            "lr": 0.01,
