@@ -5,7 +5,7 @@ import shutil
 
 config = Config()
 PATH_mglt = config.softwares
-pdb_codes_list = config.pdb_list
+pdb_codes_list =  config.pdb_list
 
 
 def prepare_receptor(pdb_file):
