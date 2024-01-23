@@ -2,10 +2,15 @@
 from BindRanker.Config import Config
 import os
 import shutil
-
+import pandas as pd
 config = Config()
 PATH_mglt = config.softwares
 pdb_codes_list =  config.pdb_list
+
+
+
+
+
 
 
 def prepare_receptor(pdb_file):
@@ -59,10 +64,30 @@ def process_pdb_ligand(pdb_code):
         print(f"File {pdb_file} not found!")
 
 
+def save_problem_pdb(pdb_to_extend, file_name):
+    try:
+        if not os.path.exists(file_name):
+            pd.DataFrame({'PDB Codes': pdb_to_extend}).to_csv(file_name, index=False)
+            print(f"New file '{file_name}' created successfully.")
+        else:
+            existing_df = pd.read_csv(file_name)
+            existing_list = existing_df['PDB Codes'].tolist()
+            extended = existing_list + pdb_to_extend
+            updated_df = pd.DataFrame({'PDB Codes': extended})
+            updated_df.to_csv(file_name, index=False)
+            print(f"File '{file_name}' extended successfully.")
+    except Exception as e:
+        print(f"An error occurred while saving '{file_name}': {e}")
+
 def main():
     for pdb_code in pdb_codes_list:
         print("PDB", pdb_code)
-        process_pdb_receptor(pdb_code)
+        try:
+            process_pdb_receptor(pdb_code)
+        except Exception as e:
+            print(f"Error processing PDB {pdb_code}: {e}")
+            save_problem_pdb([pdb_code], 'pdb_error_when_make_pdbqt.csv')
+            continue
         process_pdb_ligand(pdb_code)
 
 
