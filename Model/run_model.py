@@ -422,14 +422,14 @@ if __name__ == "__main__":
     df_metrics = k_fold_cross_validation(model, filtered_data_list, config.model_args["nfolds"],
                                          config.model_args["batch_size"], config.model_args["epochs"])
 
-    # Calculate the mean metrics for each epoch across all folds
-    mean_metrics = df_metrics.groupby(['Fold', 'Epoch']).mean().reset_index()
+    mean_metrics = pd.DataFrame([df_metrics.drop_duplicates(subset = 'Fold', keep = "last").mean()])
 
     # You can now work with 'df_metrics' for detailed metrics and 'mean_metrics' for mean metrics
     end_time = time.time()  # Record the end time
     execution_time = end_time - start_time
-
-#print(mean_metrics.head(1))
+print("df_metrics df: ", df_metrics)
+print("/n")
+print("mean_metrics df: ", mean_metrics)
 
 ## Result analysis
 ##### update_model_info Function

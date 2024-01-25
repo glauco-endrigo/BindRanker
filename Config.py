@@ -16,13 +16,13 @@ class Config():
         if not os.path.exists(f"{self.root}/{self.project_name}/processed_dir"):
             os.makedirs(f"{self.root}/{self.project_name}/processed_dir")
 
-        self.set = f"{self.root}/coreset"
+        self.set = f"{self.root}/set"
         self.data = f"{self.root}/{self.project_name}/Data"
 
         if not os.path.exists(f"{self.data}"):
             os.makedirs(f"{self.data}")
-        #self.pdb_list = pd.read_csv(f"../Datahub/pdbs_refined_set.csv")['PDB code'].to_list()[1:2]
-        self.pdb_list = ["1a30", "1p1n", "1z9g", "2v00", "2xys"] #for test
+        #self.pdb_list = pd.read_csv(f"../Datahub/pdbs_refined_set.csv")['PDB code'].to_list()[1:500]
+        self.pdb_list = ["4bps"] #for test
         self.model_args = {'seed': 42,
                            'savepath': f'{self.root}/{self.project_name}/',
                            'batch_size': 1,
