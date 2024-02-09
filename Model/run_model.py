@@ -77,16 +77,15 @@ class GATModel(nn.Module):
         x = torch.relu(x)
         #print("x.shape after relu 1", x.shape, end='\n\n')
         #print(40 * "*")
-
-     #   x = self.conv2(x, edge_index, edge_attr=distances)
+        x = self.conv2(x, edge_index, edge_attr=distances)
         #print("x shape after conv2: ", x.shape, end='\n\n')
-     #   x = torch.relu(x)
+        x = torch.relu(x)
         #print("x.shape after relu 2", x.shape, end='\n\n')
         #print(40 * "*")
 
-       #  x = self.conv3(x, edge_index, edge_attr=distances)
+        x = self.conv3(x, edge_index, edge_attr=distances)
         #print("x shape after conv 3: ", x.shape, end='\n\n')
-       #  x = torch.relu(x)
+        x = torch.relu(x)
         #print("x.shape after relu 3", x.shape, end='\n\n')
         #print(40 * "*")
 
@@ -118,70 +117,7 @@ class GATModel(nn.Module):
 
 
 forward_desc = '''
-    def forward(self, data):
-        x_s, x_t, edge_index, distances, batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.batch
-
-        # print("data.batch ALTERED: ", data.batch)
-        #print(20 * "*")
-
-        ## print("batch: ", data.batch.shape,"\n", data.batch)
-        #print("x_s.shape: ", x_s.shape, "x_t.shape: ", x_t.shape, end='\n\n')
-        ##print("x_s: ", x_s, "x_t: ", x_t, end='\n\n')
-
-        # Pad the sequences to have the same length
-
-        x = torch.cat((x_s, x_t), dim=0)  # Concatenate features
-        #print(x[0:5], end='\n\n')
-        #print("x.shape after cat", x.shape, end='\n\n')
-        #print(20 * "*")
-
-        target_size = max_size
-        padding_needed = max(target_size - x.shape[0], 0)
-        padding = (0, 0, 0, padding_needed)  # Assuming you want to pad the first dimension only
-        x = F.pad(x, padding, mode='constant', value=0)
-        #print("x.shape after PADDING", x.shape)
-        #print("x after PADDING", x[0:5])
-        #print(40 * "*")
-
-        x = self.conv1(x, edge_index, edge_attr=distances)
-        #print("x after conv1: ", x[0:5], end='\n\n')
-        #print("x shape after conv1: ", x.shape, end='\n\n')
-        x = torch.relu(x)
-        #print("x.shape after relu 1", x.shape, end='\n\n')
-        #print(40 * "*")
-
-     #   x = self.conv2(x, edge_index, edge_attr=distances)
-        #print("x shape after conv2: ", x.shape, end='\n\n')
-     #   x = torch.relu(x)
-        #print("x.shape after relu 2", x.shape, end='\n\n')
-        #print(40 * "*")
-
-       #  x = self.conv3(x, edge_index, edge_attr=distances)
-        #print("x shape after conv 3: ", x.shape, end='\n\n')
-       #  x = torch.relu(x)
-        #print("x.shape after relu 3", x.shape, end='\n\n')
-        #print(40 * "*")
-
-        x = self.conv4(x, edge_index, edge_attr=distances)
-        #print("x shape after conv 4: ", x.shape, end='\n\n')
-        ## print("x after conv2: ", x, end='\n\n')
-        x = F.leaky_relu(x, negative_slope=0.01)
-        ##print("x.shape after relu 4", x.shape, end='\n\n')
-        #print(40 * "*")
-
-        x = x.view(self.batch_size, x.shape[0])
-        #print("x.shape .view():", x.shape)
-        ##print("x after .view():", x)
-        #print("x shape after self.fc(x): ", self.fc(x).shape)
-        x = self.fc(x)
-        #print("x.shape after fc(x)", x.shape, end='\n\n')
-        x = x.squeeze().unsqueeze(0)
-        #print("x.shape after squeeze()", x.shape, end='\n\n')
-        x = torch.sigmoid(x)
-        ##print("output, after sigmoid", x, end='\n\n')
-
-        #print(70 * '%*%')
-        return x
+  
 '''
 
 
@@ -261,17 +197,21 @@ def validate_model(model, val_loader, criterion):
 
 #### Compute fold metrics for each epoch
 # Define a function to compute metrics for a given fold
-def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_epochs, batch_size):
+
+empty_df = pd.DataFrame(columns=['Epoch', 'Validation Loss', 'Train Loss'])
+empty_df.to_csv('../results/df_metrics.csv', index=False)
+def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_epochs, batch_size, fold):
     best_val_loss = float('inf')
     no_improvement = 0  # Counter for epochs with no improvement
 
-    columns = ['Epoch', 'Validation Loss', 'Accuracy', 'Precision', 'Recall', 'F1-Score', "balanced_acc", "auc_roc",
+    columns = ['Fold', 'Epoch', 'Validation Loss', 'Train Loss', 'Accuracy', 'Precision', 'Recall', 'F1-Score', "balanced_acc", "auc_roc",
                "neg_precision", "neg_recall", "TN", "FN", "TP", "FP", "auc_pr"]
     df_fold_metrics = pd.DataFrame(columns=columns)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
 
+    existing_df = pd.read_csv("../results/df_metrics.csv").reset_index(drop=True)
     for epoch in range(num_epochs):
         #print("epoch: ", epoch)
         # Training loop
@@ -281,8 +221,13 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
         val_loss, accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP, auc_pr = validate_model(
             model, val_loader, criterion)
         print('precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP, 'auc_pr:', auc_pr)
-        # print("val_loss: ", val_loss)
-        # print("best_val_loss: ", best_val_loss)
+
+
+
+        existing_df = existing_df.append({'Fold': fold + 1, 'Epoch': epoch + 1 ,'Validation Loss': val_loss,'Train Loss': train_loss}, ignore_index=True)
+
+        existing_df.to_csv("../results/df_metrics.csv", index=False)
+
         # Validation loop
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -295,6 +240,7 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
 
         df_fold_metrics = df_fold_metrics.append({'Epoch': epoch + 1
                                                      , 'Validation Loss': val_loss
+                                                     , 'Train Loss': train_loss
                                                      , 'Accuracy': accuracy
                                                      , 'Precision': precision
                                                      , 'Recall': recall
@@ -309,6 +255,12 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
                                                      , "FP": FP
                                                      , "auc_pr": auc_pr
                                                   }, ignore_index=True)
+        # Update real-time plot after each epoch
+
+        #df_fold_metrics["Fold"] = fold + 1
+        df_fold_metrics = df_fold_metrics.append(df_fold_metrics, ignore_index=True)
+        #print('df_fold_metrics:', df_fold_metrics)
+
 
     return df_fold_metrics
 
@@ -316,7 +268,7 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
 #### Define a function to perform k-fold cross-validation
 # Define a function to perform k-fold cross-validation
 def k_fold_cross_validation(model, dataset_list, num_folds, batch_size, num_epochs):
-    columns = ['Fold', 'Epoch', 'Validation Loss', 'Accuracy', 'Precision', 'Recall', 'F1-Score', "balanced_acc",
+    columns = ['Fold', 'Epoch', 'Validation Loss','Train Loss','Accuracy', 'Precision', 'Recall', 'F1-Score', "balanced_acc",
                "auc_roc", "neg_precision", "neg_recall","auc_pr"]
     df_metrics = pd.DataFrame(columns=columns)
 
@@ -328,10 +280,11 @@ def k_fold_cross_validation(model, dataset_list, num_folds, batch_size, num_epoc
         val_data = [dataset_list[i] for i in val_idx]
 
         model.reset_parameters()
-        fold_metrics = compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_epochs, batch_size)
+        fold_metrics = compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_epochs, batch_size, fold)
         fold_metrics['Fold'] = fold + 1
         df_metrics = df_metrics.append(fold_metrics, ignore_index=True)
         #print(fold_metrics)
+
     return df_metrics
 
 
@@ -364,7 +317,7 @@ filtered_data_list_num_nodes = [data for data in dataset_list if data.num_nodes 
 ##### Filter data list
 filtered_data_list_descriptors = [data for data in filtered_data_list_num_nodes if
                                   data.x_s.shape[0] > 0 and data.x_t.shape[0] > 0]
-filtered_data_list = filtered_data_list_descriptors[0:2000]
+filtered_data_list = filtered_data_list_descriptors#[0:200]
 
 #### Data info
 label_distribution = dict(Counter([label.y.tolist() for label in filtered_data_list]))
@@ -427,9 +380,9 @@ if __name__ == "__main__":
     # You can now work with 'df_metrics' for detailed metrics and 'mean_metrics' for mean metrics
     end_time = time.time()  # Record the end time
     execution_time = end_time - start_time
-print("df_metrics df: ", df_metrics)
-print("/n")
-print("mean_metrics df: ", mean_metrics)
+#print("df_metrics df: ", df_metrics)
+#print("/n")
+#print("mean_metrics df: ", mean_metrics)
 
 ## Result analysis
 ##### update_model_info Function
@@ -517,27 +470,3 @@ def plot_loss_vs_epochs(df_metrics):
     plt.grid(True)
     plt.show()
 
-
-# Usage:
-# Assuming you have executed k-fold cross-validation and have 'df_metrics' available
-plot_loss_vs_epochs(df_metrics)
-
-
-
-###### Graph all results
-
-# Assuming your DataFrame is named 'df'
-# You can replace 'df' with the actual name of your DataFrame
-
-# Create a Seaborn lineplot to visualize the data
-plt.figure(figsize=(12, 6))
-sns.lineplot(data=all_metrics_from_all_models, x='Epoch', y='Validation Loss', hue='Model name', estimator=None)
-
-# Customize the plot
-plt.title('Validation Loss by Epoch by Model Name')
-plt.xlabel('Epoch')
-plt.ylabel('Validation Loss')
-plt.legend(title='Model Name', loc='upper right')
-
-# Show the plot
-plt.show()

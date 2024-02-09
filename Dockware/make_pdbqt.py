@@ -5,13 +5,8 @@ import shutil
 import pandas as pd
 config = Config()
 PATH_mglt = config.softwares + "/MGLTools-1.5.6"
-PATH_mglt_2 = "/usr/local/MGLTools-1.5.7"
+#PATH_mglt_2 = "/usr/local/MGLTools-1.5.7"
 pdb_codes_list = config.pdb_list
-
-
-
-
-
 
 
 def prepare_receptor(pdb_file):
@@ -20,14 +15,14 @@ def prepare_receptor(pdb_file):
     print("receptor_name:", receptor_name)
     output_file = f"receptor.pdbqt"
     print("output_file:", output_file)
-    cmd = f"{PATH_mglt_2}/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor4.py -r {pdb_file} -o {output_file} -A hydrogen"
+    cmd = f"{PATH_mglt}/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor4.py -r {pdb_file} -o {output_file} -A hydrogen"
     print(cmd)
     os.system(cmd)
     return output_file
 
 
 def process_pdb_receptor(pdb_code):
-    pdb_file = f"{config.set}/{pdb_code}/{pdb_code}_protein.pdb"
+    pdb_file = f"{config.set}/{pdb_code}/{pdb_code}_protein_fixed.pdb"
     if os.path.isfile(pdb_file):
         treated_file = prepare_receptor(pdb_file)
         destination_file = os.path.join(os.path.dirname(pdb_file), os.path.basename(treated_file))
@@ -39,7 +34,7 @@ def process_pdb_receptor(pdb_code):
 def prepare_ligand(pdb_file):
     receptor_name = os.path.splitext(pdb_file)[0]
     output_file = f"ligand.pdbqt"
-    cmd = f"{PATH_mglt_2}/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l {pdb_file} -o {output_file}"
+    cmd = f"{PATH_mglt}/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l {pdb_file} -o {output_file}"
     os.system(cmd)
     return output_file
 
