@@ -31,98 +31,77 @@ patience = config.model_args["patience"]
 # Get today's date
 
 ####  GATModel
-max_size = 650
+from torch_geometric.nn import global_mean_pool
+
+
 class GATModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size):
         super(GATModel, self).__init__()
-        self.batch_size = batch_size
-        self.conv1 = GATConv(input_dim, hidden_dim, heads=1)  # You can adjust the number of heads
+        # Define the graph convolutional layers
+        self.conv1 = GATConv(in_channels=input_dim, out_channels=hidden_dim, heads=1)
+        self.conv2 = GATConv(in_channels=hidden_dim, out_channels=hidden_dim, heads=1)
 
-        self.conv2 = GATConv(hidden_dim, hidden_dim, heads=1)  # You can adjust the number of heads
-        self.conv3 = GATConv(hidden_dim, hidden_dim, heads=1)  # You can adjust the number of heads
-
-        self.conv4 = GATConv(hidden_dim, self.batch_size, heads=1)  # Output dimension set to 1
-
-
-        self.fc = nn.Linear(max_size, 1)  # Initialize fc layer as None
+        self.fc1 = nn.Linear(hidden_dim, 100)
+        self.fc2 = nn.Linear(100, 1)  # Initialize fc layer as None
 
     def forward(self, data):
-        x_s, x_t, edge_index, distances, batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.batch
+        x_s, x_t, edge_index, distances, x_t_batch, x_s_batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.x_t_batch, data.x_s_batch
 
-        # print("data.batch ALTERED: ", data.batch)
-        #print(20 * "*")
+        """# Print shapes of input tensors
+        print("\nShapes of input tensors:")
+        print("x_s.shape:", x_s.shape)
+        print("x_t.shape:", x_t.shape)
+        print("edge_index.shape:", edge_index.shape)
+        print("distances.shape:", distances.shape)
+        print("x_t_batch.shape:", x_t_batch.shape)
+        print("-" * 50)"""
 
-        ## print("batch: ", data.batch.shape,"\n", data.batch)
-        #print("x_s.shape: ", x_s.shape, "x_t.shape: ", x_t.shape, end='\n\n')
-        ##print("x_s: ", x_s, "x_t: ", x_t, end='\n\n')
+        # Apply the first graph convolutional layer
+        x_new_t = self.conv1((x_s, x_t), edge_index, size=(x_s.size(0), x_t.size(0)), edge_attr=distances)
+        #htopprint('x_new_t after first conv', x_new_t)
+        #print("x_new_t.shape:", x_new_t.shape)
+        x_new_t = torch.relu(x_new_t)
 
-        # Pad the sequences to have the same length
+        # Apply the second graph convolutional layer
+        x_new_s = self.conv2((x_new_t, x_s), edge_index[torch.tensor([1, 0])], size=(x_new_t.size(0), x_s.size(0)), edge_attr=distances)
+        #print("x_new_s.shape:", x_new_s.shape)
+        x = F.leaky_relu(x_new_s, negative_slope=0.01)
+        #print("-" * 50)
+        #print("x before global pool", x)
+        #print('x_s_batch ', x_s_batch)
+        # Perform global mean pooling
+        x = global_mean_pool(x, x_s_batch)
+        #print("x.shape after global_mean_pool:", x.shape)
+        #print('x after global_mean_pool', x, '\n')
+        #print("-" * 50)
 
-        x = torch.cat((x_s, x_t), dim=0)  # Concatenate features
-        #print(x[0:5], end='\n\n')
-        #print("x.shape after cat", x.shape, end='\n\n')
-        #print(20 * "*")
-
-        target_size = max_size
-        padding_needed = max(target_size - x.shape[0], 0)
-        padding = (0, 0, 0, padding_needed)  # Assuming you want to pad the first dimension only
-        x = F.pad(x, padding, mode='constant', value=0)
-        #print("x.shape after PADDING", x.shape)
-        #print("x after PADDING", x[0:5])
-        #print(40 * "*")
-
-        x = self.conv1(x, edge_index, edge_attr=distances)
-        #print("x after conv1: ", x[0:5], end='\n\n')
-        #print("x shape after conv1: ", x.shape, end='\n\n')
-        x = torch.relu(x)
-        #print("x.shape after relu 1", x.shape, end='\n\n')
-        #print(40 * "*")
-        x = self.conv2(x, edge_index, edge_attr=distances)
-        #print("x shape after conv2: ", x.shape, end='\n\n')
-        x = torch.relu(x)
-        #print("x.shape after relu 2", x.shape, end='\n\n')
-        #print(40 * "*")
-
-        x = self.conv3(x, edge_index, edge_attr=distances)
-        #print("x shape after conv 3: ", x.shape, end='\n\n')
-        x = torch.relu(x)
-        #print("x.shape after relu 3", x.shape, end='\n\n')
-        #print(40 * "*")
-
-        x = self.conv4(x, edge_index, edge_attr=distances)
-        #print("x shape after conv 4: ", x.shape, end='\n\n')
-        ## print("x after conv2: ", x, end='\n\n')
-        x = F.leaky_relu(x, negative_slope=0.01)
-        ##print("x.shape after relu 4", x.shape, end='\n\n')
-        #print(40 * "*")
-
-        x = x.view(self.batch_size, x.shape[0])
-        #print("x.shape .view():", x.shape)
-        ##print("x after .view():", x)
-        #print("x shape after self.fc(x): ", self.fc(x).shape)
-        x = self.fc(x)
-        #print("x.shape after fc(x)", x.shape, end='\n\n')
-        x = x.squeeze().unsqueeze(0)
-        #print("x.shape after squeeze()", x.shape, end='\n\n')
-        x = torch.sigmoid(x)
-        ##print("output, after sigmoid", x, end='\n\n')
-
-        #print(70 * '%*%')
+        # Apply the linear layer
+        x = self.fc1(x)
+        x = self.fc2(x)
+        #print("x.shape after linear layer:", x.shape)
+        #print("x after linear layer:", x, '\n')
+        x = x.squeeze()
+        #print('x after squeeze', x)
+        #print("=" * 100)
         return x
 
     def reset_parameters(self):
-        for layer in [self.conv1, self.conv2, self.fc]:
+        for layer in [self.conv1, self.conv2, self.fc1, self.fc2]:
             if hasattr(layer, "reset_parameters"):
                 layer.reset_parameters()
+
 
 
 forward_desc = '''
   
 '''
 
-
+import resource
 # The heads parameter controls the number of attention heads used in the multi-head attention mechanism. Each attention head learns different relationships between nodes in the graph. When you set heads to 1, it means you are using only a single attention head for both convolution layers (self.conv1 and self.conv2).
-
+# Function to print CPU memory stats
+def print_cpu_memory_stats():
+    usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)  # Convert to GB
+    print(f"Memory usage: {usage:.2f} GB")
 
 #### Funtions to train and validate
 # Define a function for the training loop with early stopping
@@ -130,15 +109,23 @@ def train_model_with_early_stopping(model, train_loader, val_loader, optimizer, 
     model.train()
     total_loss = 0
 
-    for batch_data in train_loader:  # This loop was missing
+    for batch_idx, batch_data in enumerate(train_loader):  # This loop was missing
+        print(f"Batch {batch_idx}: CPU memory stats before batch processing:")
+        print_cpu_memory_stats()
+
         optimizer.zero_grad()
         output = model(batch_data)
         target = batch_data.y
+        #print(10*'****')
+        #print('Output: ', output)
+        #print('Target: ', target)
+        #print(10 * '****')
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
 
+        del batch_data
     return total_loss / len(train_loader.dataset)
 
 
@@ -161,7 +148,7 @@ def validate_model(model, val_loader, criterion):
             val_true.extend(target.tolist())
             val_pred.extend((output > 0.5).float().tolist())  # Assuming binary classification
             val_probs.extend(output.tolist())
-
+            del batch_data
     precision, recall, thresholds = precision_recall_curve(val_true, val_probs)
 
     # Calculate AUC-PR
@@ -208,10 +195,10 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
                "neg_precision", "neg_recall", "TN", "FN", "TP", "FP", "auc_pr"]
     df_fold_metrics = pd.DataFrame(columns=columns)
 
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, follow_batch=['x_s', 'x_t'])
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True, follow_batch=['x_s', 'x_t'])
 
-    existing_df = pd.read_csv("../results/df_metrics.csv").reset_index(drop=True)
+    #existing_df = pd.read_csv("../results/df_metrics.csv").reset_index(drop=True)
     for epoch in range(num_epochs):
         #print("epoch: ", epoch)
         # Training loop
@@ -220,13 +207,13 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
         # Validation loop
         val_loss, accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP, auc_pr = validate_model(
             model, val_loader, criterion)
-        print('precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP, 'auc_pr:', auc_pr)
+        print('epoch:',epoch , 'precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP, 'auc_pr:', auc_pr)
 
 
 
-        existing_df = existing_df.append({'Fold': fold + 1, 'Epoch': epoch + 1 ,'Validation Loss': val_loss,'Train Loss': train_loss}, ignore_index=True)
+        #existing_df = existing_df.append({'Fold': fold + 1, 'Epoch': epoch + 1 ,'Validation Loss': val_loss,'Train Loss': train_loss}, ignore_index=True)
 
-        existing_df.to_csv("../results/df_metrics.csv", index=False)
+        #existing_df.to_csv("../results/df_metrics.csv", index=False)
 
         # Validation loop
         if val_loss < best_val_loss:
@@ -298,7 +285,6 @@ class BipartiteData(Data):
         self.x_t = x_t
         self.y = y
         self.edge_attr = edge_attr  # Add edge_attr attribute
-        # self.num_nodes = x_s.size(0) +  x_t.size(0)
         self.num_nodes = (x_s.size(0) if x_s is not None else 0) + (x_t.size(0) if x_t is not None else 0)
 
     def __inc__(self, key, value, *args, **kwargs):
@@ -309,7 +295,7 @@ class BipartiteData(Data):
 
 
 # To load the data back with the correct data types
-with open(f'{config.data}/bipartite_data.pkl', 'rb') as file:
+with open(f'{config.data}/bipartite_data_normalized.pkl', 'rb') as file:
     dataset_list = pickle.load(file)
 
 ##### Filter data list
@@ -317,7 +303,7 @@ filtered_data_list_num_nodes = [data for data in dataset_list if data.num_nodes 
 ##### Filter data list
 filtered_data_list_descriptors = [data for data in filtered_data_list_num_nodes if
                                   data.x_s.shape[0] > 0 and data.x_t.shape[0] > 0]
-filtered_data_list = filtered_data_list_descriptors#[0:200]
+filtered_data_list = filtered_data_list_descriptors[0:1938]
 
 #### Data info
 label_distribution = dict(Counter([label.y.tolist() for label in filtered_data_list]))
@@ -333,6 +319,8 @@ print("Nº BipartiteData objects:", len(dataset_list))
 print("Nº BipartiteData objects filtered by num_nodes > 0: ", len(filtered_data_list_num_nodes))
 print("Nº BipartiteData objects filtered by has descriptors > 0:", len(filtered_data_list_descriptors))
 print("Nº BipartiteData objects for training", len(filtered_data_list))
+print('Print distribuition: ', dist)
+
 print(65 * "*")
 
 ## Run Model
@@ -350,11 +338,11 @@ class BalancedBCEWithLogitsLoss(nn.Module):
 
 
 # Initialize the model
-model = GATModel(input_dim=7, hidden_dim=400, batch_size=config.model_args["batch_size"])
+model = GATModel(input_dim=11, hidden_dim=11, batch_size=config.model_args["batch_size"])
 
 # Define loss and optimizer
 #criterion = nn.BCEWithLogitsLoss()
-criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(12))
+criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(12.5))
 #optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'])
 import time
 
