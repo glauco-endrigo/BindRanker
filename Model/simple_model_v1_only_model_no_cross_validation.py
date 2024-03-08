@@ -79,8 +79,9 @@ class BipartiteData(Data):
 
 # bipartite_data tesded, worked
 # bipartite_data_name_normalized: worked too!
+# bipartite_data_with_pose_pred
 # To load the data back with the correct data types
-with open(f'{config.data}/bipartite_data_name_normalized.pkl', 'rb') as file:
+with open(f'{config.data}/bipartite_data_with_pose_pred.pkl', 'rb') as file:
     dataset_list = pickle.load(file)
 
 ##### Filter data list
@@ -168,21 +169,26 @@ class GATModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size):
         super(GATModel, self).__init__()
         self.conv1 = GATConv(in_channels=input_dim, out_channels=hidden_dim, heads=3)
-        #self.conv2 = GATConv(in_channels=hidden_dim, out_channels=hidden_dim, heads=4)
-        self.fc1 = nn.Linear(22+11, 10)
+        self.conv2 = GATConv(in_channels=hidden_dim, out_channels=hidden_dim, heads=1)
+        self.fc1 = nn.Linear(12*3, 10)
         #self.bn1 = nn.BatchNorm1d(10)
         #self.fc2 = nn.Linear(10, 10)
         #self.bn2 = nn.BatchNorm1d(10)
         self.fc3 = nn.Linear(10, 1)
+        self.dropout = nn.Dropout(0.1)
 
     def forward(self, data):
         x_s, x_t, edge_index, distances, x_t_batch, x_s_batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.x_t_batch, data.x_s_batch
         x_new_t = self.conv1((x_s, x_t), edge_index, size=(x_s.size(0), x_t.size(0)), edge_attr=distances)
         x = torch.relu(x_new_t)
+
+        ##########3
         #x_new_s = self.conv2((x_t, x_s), edge_index[torch.tensor([1, 0])], size=(x_t.size(0), x_s.size(0)), edge_attr=distances)
         #x = torch.relu(x_new_s)
+        #####################
         x = global_mean_pool(x, x_s_batch)
         x = self.fc1(x)
+        #x = self.dropout(x)
         x = self.fc3(x)
         #print('x: ', x)
         return x.squeeze()
@@ -234,21 +240,29 @@ def validate_model(model, val_loader, criterion):
 
 
 # Initialize the model
-model = GATModel(input_dim=11, hidden_dim=11, batch_size=config.model_args["batch_size"])
+model = GATModel(input_dim=12, hidden_dim=12, batch_size=config.model_args["batch_size"])
 criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(12))
-optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'])
+optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'], weight_decay=0.01)
 train_loader = DataLoader(filtered_data_list[:1500], batch_size=config.model_args["batch_size"], shuffle=True, follow_batch=['x_s', 'x_t'])
 test_loader = DataLoader(filtered_data_list[1500:1938], batch_size=config.model_args["batch_size"], shuffle=True, follow_batch=['x_s', 'x_t'])
 
+
+empty_df = pd.DataFrame(columns=['Epoch', 'Validation Loss', 'Train Loss'])
+empty_df.to_csv('../results/df_metrics.csv', index=False)
+existing_df = pd.read_csv("../results/df_metrics.csv").reset_index(drop=True)
 # Training loop
 for epoch in range(1, config.model_args['epochs']):
-    train()
+    train_loss = train()
     val_loss, accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP, auc_pr = validate_model(
         model, test_loader, criterion)
     print('epoch:', epoch, 'precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP,
               'auc_pr:', auc_pr, 'f1: ',f1, 'auc_roc:', auc_roc)
 
+    existing_df = existing_df.append(
+        {'Fold': "1", 'Epoch': epoch + 1, 'Validation Loss': val_loss, 'Train Loss': train_loss},
+        ignore_index=True)
 
+    existing_df.to_csv("../results/df_metrics.csv", index=False)
 
 
 
