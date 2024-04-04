@@ -28,7 +28,13 @@ config = Config()
 
 patience = config.model_args["patience"]
 
-# Get today's date
+import gc
+class GarbageCollectCallback:
+    def on_epoch_end(self, model):
+        torch.cuda.empty_cache()  # Clear GPU memory
+        gc.collect()  # Perform garbage collection
+# Instantiate the callback
+garbage_collect_callback = GarbageCollectCallback()
 
 ####  GATModel
 from torch_geometric.nn import global_mean_pool
@@ -123,7 +129,7 @@ def train_model_with_early_stopping(model, train_loader, val_loader, optimizer, 
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-        total_loss += loss.item()
+        total_loss += loss.detach()#.item()
 
         del batch_data
     return total_loss / len(train_loader.dataset)
@@ -208,7 +214,7 @@ def compute_fold_metrics(model, train_data, val_data, optimizer, criterion, num_
         val_loss, accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP, auc_pr = validate_model(
             model, val_loader, criterion)
         print('epoch:',epoch , 'precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP, 'auc_pr:', auc_pr)
-
+        garbage_collect_callback.on_epoch_end(model)
 
 
         #existing_df = existing_df.append({'Fold': fold + 1, 'Epoch': epoch + 1 ,'Validation Loss': val_loss,'Train Loss': train_loss}, ignore_index=True)
@@ -295,7 +301,7 @@ class BipartiteData(Data):
 
 
 # To load the data back with the correct data types
-with open(f'{config.data}/bipartite_data_normalized.pkl', 'rb') as file:
+with open(f'{config.data}/bipartite_data.pkl', 'rb') as file:  #_normalized
     dataset_list = pickle.load(file)
 
 ##### Filter data list
@@ -338,7 +344,7 @@ class BalancedBCEWithLogitsLoss(nn.Module):
 
 
 # Initialize the model
-model = GATModel(input_dim=11, hidden_dim=11, batch_size=config.model_args["batch_size"])
+model = GATModel(input_dim=7, hidden_dim=7, batch_size=config.model_args["batch_size"])
 
 # Define loss and optimizer
 #criterion = nn.BCEWithLogitsLoss()

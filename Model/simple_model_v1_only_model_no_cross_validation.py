@@ -1,50 +1,20 @@
 from tqdm import tqdm
 import pickle
 import torch
-from torch_geometric.data import Data, DataLoader
-from torch_geometric.nn import GCNConv
-import torch.nn as nn
-import torch.nn.functional as F
-import os
-import pandas as pd
-import subprocess
-import numpy as np
-import torch
-import pandas as pd
-from rdkit import Chem
-from rdkit.Chem import Descriptors
-import os
-from torch_geometric.loader import DataLoader
-from pathlib import Path
-import torch.nn as nn
-import torch.optim as optim
-from torch_geometric.data import DataLoader, Data
-from torch_geometric.nn import GCNConv
-import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch_geometric.data import Data, DataLoader
-from torch_geometric.nn import GATConv
-import random
-from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-import matplotlib.pyplot as plt
 from collections import Counter
 from torch_geometric.data import Data, Dataset
-import os
 from sklearn.metrics import roc_auc_score, average_precision_score, balanced_accuracy_score, confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
-import os
 import pandas as pd
-import matplotlib.pyplot as plt
 from BindRanker.Config import Config
 from torch_geometric.nn import GATConv, global_mean_pool
 config = Config()
 patience = config.model_args["patience"]
 
 from sklearn.metrics import precision_recall_curve, auc
-#### BalancedBCEWithLogitsLoss
 
 class BalancedBCEWithLogitsLoss(nn.Module):
     def __init__(self, pos_weight=None, reduction='mean'):
@@ -69,7 +39,7 @@ class BipartiteData(Data):
         self.y = y
         self.edge_attr = edge_attr  # Add edge_attr attribute
         # self.num_nodes = len(set(edge_index[0].tolist())) +  len(set(edge_index[1].tolist()))
-        self.num_nodes = 10  # (x_s.size(0) if x_s is not None else 0) + (x_t.size(0) if x_t is not None else 0)
+        self.num_nodes = 12  # (x_s.size(0) if x_s is not None else 0) + (x_t.size(0) if x_t is not None else 0)
 
     def __inc__(self, key, value, *args, **kwargs):
         if key == 'edge_index':
@@ -80,8 +50,11 @@ class BipartiteData(Data):
 # bipartite_data tesded, worked
 # bipartite_data_name_normalized: worked too!
 # bipartite_data_with_pose_pred
+#bipartite_data_with_pose_pred_sorted_by_family_encode
+#bipartite_data_no_pose_rank_sorted_by_family
+# bipartite_data_no_pose_rank_sorted_by_family_cut_3.5
 # To load the data back with the correct data types
-with open(f'{config.data}/bipartite_data_with_pose_pred.pkl', 'rb') as file:
+with open(f'{config.data}/bipartite_data_no_pose_rank_sorted_by_family_cut_3.5.pkl', 'rb') as file:
     dataset_list = pickle.load(file)
 
 ##### Filter data list
@@ -165,6 +138,8 @@ from torch_geometric.nn import global_mean_pool
             if hasattr(layer, "reset_parameters"):
                 layer.reset_parameters()
 """
+
+"""
 class GATModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size):
         super(GATModel, self).__init__()
@@ -192,9 +167,38 @@ class GATModel(nn.Module):
         x = self.fc3(x)
         #print('x: ', x)
         return x.squeeze()
+#
+"""
+class GATModel(nn.Module):
+    def __init__(self, input_dim, hidden_dim, batch_size):
+        super(GATModel, self).__init__()
+        self.conv1 = GATConv(in_channels=input_dim, out_channels=240, heads=3)
+        #self.conv2 = GATConv(in_channels=100, out_channels=hidden_dim, heads=1)
+        self.fc1 = nn.Linear(240*3, 10)
+        self.fc3 = nn.Linear(10, 1)
+        self.dropout = nn.Dropout(0.1)
+
+    def forward(self, data):
+        x_s, x_t, edge_index, distances, x_t_batch, x_s_batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.x_t_batch, data.x_s_batch
+        x_new_t = self.conv1((x_s, x_t), edge_index, size=(x_s.size(0), x_t.size(0)), edge_attr=distances)
+        x = torch.relu(x_new_t)
+
+        ##########3
+        #x_new_s = self.conv2((x_t, x_s), edge_index[torch.tensor([1, 0])], size=(x_t.size(0), x_s.size(0)), edge_attr=distances)
+        #x = torch.relu(x_new_s)
+        #####################
+        x = global_mean_pool(x, x_s_batch)
+        x = self.fc1(x)
+        #x = self.fc2(x)
+
+        #x = self.dropout(x)
+        x = self.fc3(x)
+        #print('x: ', x)
+        return x.squeeze()
 # Training and validation functions
 def train():
     model.train()
+    total_loss = 0
     for data in train_loader:
         out = model(data)
         loss = criterion(out, data.y)
@@ -202,7 +206,9 @@ def train():
         optimizer.step()
         optimizer.zero_grad()
 
+        total_loss += loss.detach()
 
+    return total_loss / len(train_loader.dataset)
 def validate_model(model, val_loader, criterion):
     model.eval()
     val_loss = 0
@@ -240,30 +246,44 @@ def validate_model(model, val_loader, criterion):
 
 
 # Initialize the model
-model = GATModel(input_dim=12, hidden_dim=12, batch_size=config.model_args["batch_size"])
-criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(12))
+model = GATModel(input_dim=11, hidden_dim=11, batch_size=config.model_args["batch_size"])
+criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(11))
 optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'], weight_decay=0.01)
 train_loader = DataLoader(filtered_data_list[:1500], batch_size=config.model_args["batch_size"], shuffle=True, follow_batch=['x_s', 'x_t'])
 test_loader = DataLoader(filtered_data_list[1500:1938], batch_size=config.model_args["batch_size"], shuffle=True, follow_batch=['x_s', 'x_t'])
 
 
-empty_df = pd.DataFrame(columns=['Epoch', 'Validation Loss', 'Train Loss'])
+empty_df = pd.DataFrame(columns=['Epoch', 'Validation Loss', 'Train Loss', 'precision', 'recall','auc_pr', 'f1' ])
 empty_df.to_csv('../results/df_metrics.csv', index=False)
 existing_df = pd.read_csv("../results/df_metrics.csv").reset_index(drop=True)
+
+best_auc_pr = float('-inf')  # Inicializa a melhor pontuação de AUC-PR como negativa infinita
+best_model_path = "../Model/best_model.pt"  # Caminho para salvar o melhor modelo
+
 # Training loop
 for epoch in range(1, config.model_args['epochs']):
     train_loss = train()
+    train_loss = train_loss.item()
     val_loss, accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP, auc_pr = validate_model(
         model, test_loader, criterion)
     print('epoch:', epoch, 'precision:', precision, 'recall:', recall, "TN:", TN, "FN:", FN, 'TP:', TP, 'FP:', FP,
               'auc_pr:', auc_pr, 'f1: ',f1, 'auc_roc:', auc_roc)
 
     existing_df = existing_df.append(
-        {'Fold': "1", 'Epoch': epoch + 1, 'Validation Loss': val_loss, 'Train Loss': train_loss},
+        {'Fold': "1"
+            , 'Epoch': epoch + 1
+            , 'Validation Loss': val_loss
+            , 'Train Loss': train_loss
+            , 'precision:': precision
+            , 'recall:': recall
+            , 'auc_pr:': auc_pr
+            , 'f1: ': f1
+         },
         ignore_index=True)
 
     existing_df.to_csv("../results/df_metrics.csv", index=False)
 
-
-
-
+    if auc_pr > best_auc_pr:
+        torch.save(model.state_dict(), best_model_path)
+        best_auc_pr = auc_pr
+        print("Best model saved with AUC-PR:", best_auc_pr)
