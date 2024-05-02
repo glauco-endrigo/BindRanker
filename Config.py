@@ -25,13 +25,14 @@ class Config():
         self.pdb_list = os.listdir('../set')#[:3]# ["4bps"] #for test
         self.model_args = {'seed': 42,
                            'savepath': f'{self.root}/{self.project_name}/',
-                           'batch_size': 250*4,
-                           'epochs': 150*6,
+                           'batch_size': 250*10,
+                           'epochs': 300*2,
                            'nfolds': 3,
                            'patience': 15,
                            "lr": 0.01,  # 0.05,
                            "gmp": 10,
                            }
+        # 250*10 Valor usado para refiened set
         self.label_args = {'class_def': "rmsd",
                            }
         self.node_descriptors = ["Mass"

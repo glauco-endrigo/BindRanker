@@ -11,6 +11,7 @@ from sklearn.metrics import roc_auc_score, average_precision_score, balanced_acc
 import pandas as pd
 from BindRanker.Config import Config
 from torch_geometric.nn import GATConv, global_mean_pool
+
 config = Config()
 patience = config.model_args["patience"]
 
@@ -47,14 +48,22 @@ class BipartiteData(Data):
         else:
             return super().__inc__(key, value, *args, **kwargs)
 
-# bipartite_data tesded, worked
-# bipartite_data_name_normalized: worked too!
-# bipartite_data_with_pose_pred
+#bipartite_data tesded, worked
+#bipartite_data_name_normalized: worked too!
+#bipartite_data_with_pose_pred
 #bipartite_data_with_pose_pred_sorted_by_family_encode
 #bipartite_data_no_pose_rank_sorted_by_family
 # bipartite_data_no_pose_rank_sorted_by_family_cut_3.5
+#bipartite_data_no_pose_rank_sorted_by_family_cut_4_refined_set_encoded
+#bipartite_data_no_pose_rank_NOT_sorted_by_family_cut_4_coreset_encoded_1
+#bipartite_data_no_pose_rank_NOT_sorted_by_family_cut_4_coreset_1
+#bipartite_data_shuffle
+#bipartite_data_no_pose_rank_NOT_sorted_by_family_cut_4_coreset_1_RAND
+#bipartite_data_no_pose_rank_cut_4_refined_set_encoded_RAND
 # To load the data back with the correct data types
-with open(f'{config.data}/bipartite_data_no_pose_rank_sorted_by_family_cut_3.5.pkl', 'rb') as file:
+
+with open(f'{config.data}/bipartite_data_no_pose_rank_cut_4_refined_set_encoded_RAND_RAND.pkl', 'rb') as file:
+
     dataset_list = pickle.load(file)
 
 ##### Filter data list
@@ -62,7 +71,7 @@ filtered_data_list_num_nodes = [data for data in dataset_list if data.num_nodes 
 ##### Filter data list
 filtered_data_list_descriptors = [data for data in filtered_data_list_num_nodes if
                                   data.x_s.shape[0] > 0 and data.x_t.shape[0] > 0]
-filtered_data_list = filtered_data_list_descriptors[0:1800]
+filtered_data_list = filtered_data_list_descriptors#[0:1800]
 
 #### Data info
 label_distribution = dict(Counter([label.y.tolist() for label in filtered_data_list]))
@@ -172,9 +181,9 @@ class GATModel(nn.Module):
 class GATModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size):
         super(GATModel, self).__init__()
-        self.conv1 = GATConv(in_channels=input_dim, out_channels=240, heads=3)
+        self.conv1 = GATConv(in_channels=input_dim, out_channels=600, heads=2)
         #self.conv2 = GATConv(in_channels=100, out_channels=hidden_dim, heads=1)
-        self.fc1 = nn.Linear(240*3, 10)
+        self.fc1 = nn.Linear(600*2, 10)
         self.fc3 = nn.Linear(10, 1)
         self.dropout = nn.Dropout(0.1)
 
@@ -247,12 +256,12 @@ def validate_model(model, val_loader, criterion):
 
 # Initialize the model
 model = GATModel(input_dim=11, hidden_dim=11, batch_size=config.model_args["batch_size"])
-criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(11))
+criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(15)) #11.5
 optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'], weight_decay=0.01)
-train_loader = DataLoader(filtered_data_list[:1500], batch_size=config.model_args["batch_size"], shuffle=True, follow_batch=['x_s', 'x_t'])
-test_loader = DataLoader(filtered_data_list[1500:1938], batch_size=config.model_args["batch_size"], shuffle=True, follow_batch=['x_s', 'x_t'])
-
-
+train_loader = DataLoader(filtered_data_list[:22121], batch_size=config.model_args["batch_size"], shuffle=False, follow_batch=['x_s', 'x_t'])
+test_loader = DataLoader(filtered_data_list[22121:27650], batch_size=config.model_args["batch_size"], shuffle=False, follow_batch=['x_s', 'x_t'])
+#[22121:27650]
+#[1500:1900]
 empty_df = pd.DataFrame(columns=['Epoch', 'Validation Loss', 'Train Loss', 'precision', 'recall','auc_pr', 'f1' ])
 empty_df.to_csv('../results/df_metrics.csv', index=False)
 existing_df = pd.read_csv("../results/df_metrics.csv").reset_index(drop=True)
