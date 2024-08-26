@@ -2,7 +2,8 @@ import time
 from tqdm import tqdm
 import os
 from pathlib import Path
-from Config import Config
+#from Config import Config
+from BindRanker.Config import Config
 
 config = Config()
 

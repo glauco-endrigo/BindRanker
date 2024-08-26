@@ -1,14 +1,14 @@
 import os
 import csv
 from tqdm import tqdm
-#from BindRanker.Config import Config
-from Config import Config
+from BindRanker.Config import Config
+#from Config import Config
 
 config = Config()
 nposes = config.docking_params['nposes']
 files_directory = config.set
 data_directory = config.data
-csv_file_path = os.path.join(data_directory, "rmsd_refined_set.csv")
+csv_file_path = os.path.join(data_directory, "rmsd.csv")
 
 # Create the "Data" directory if it doesn't exist
 os.makedirs(data_directory, exist_ok=True)
