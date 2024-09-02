@@ -157,7 +157,7 @@ Datafactory/Data/
 
 # Model
 Model/run_model_v1.py
-
+Model/models_figures
 Datafactory/errors.txt
 
 Dockware/docking_log.txt
@@ -166,7 +166,7 @@ coreset/
 errors.txt
 executables/
 results/
-
+Model/models_pt/
 #Datahub
 Datahub/Data 
 Datahub/pdbs_
