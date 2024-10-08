@@ -173,7 +173,15 @@ Datahub/pdbs_
 Datahub/processed_dir  
 Datahub/protgraph_dict.pkl
 
+Datafactory/Outros/
+Validation/eng_figures/
+Validation/models_figures/
 
+coreset.tar.gz
+coreset_100/
+Datahub/Dicts/
+
+/home/lbcb00/Workspace//BindRanker/BindRanker/Datafactory/Outros
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

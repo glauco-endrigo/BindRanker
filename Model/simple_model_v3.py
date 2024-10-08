@@ -1,5 +1,6 @@
 import os.path
 import pickle
+import random
 from collections import Counter
 
 import pandas as pd
@@ -19,6 +20,22 @@ patience = config.model_args["patience"]
 print('Description of the experiment')
 descricao = input()
 from sklearn.metrics import precision_recall_curve, auc
+def get_and_increment_counter(counter_file):
+    if os.path.exists(counter_file):
+        with open(counter_file, "r") as file:
+            counter = int(file.read())
+    else:
+        counter = 1
+
+    with open(counter_file, "w") as file:
+        file.write(str(counter + 1))
+
+    return counter
+
+
+counter_file = "counter_file.txt"
+counter = get_and_increment_counter(counter_file)
+model_name = f"model_{counter}"
 
 class BalancedBCEWithLogitsLoss(nn.Module):
     def __init__(self, pos_weight=None, reduction='mean'):
@@ -43,7 +60,7 @@ class BipartiteData(Data):
         self.y = y
         self.edge_attr = edge_attr  # Add edge_attr attribute
         # self.num_nodes = len(set(edge_index[0].tolist())) +  len(set(edge_index[1].tolist()))
-        self.num_nodes = 12  # (x_s.size(0) if x_s is not None else 0) + (x_t.size(0) if x_t is not None else 0)
+        self.num_nodes = 7  # (x_s.size(0) if x_s is not None else 0) + (x_t.size(0) if x_t is not None else 0)
 
     def __inc__(self, key, value, *args, **kwargs):
         if key == 'edge_index':
@@ -70,7 +87,7 @@ class BipartiteData(Data):
 ##############################################################################
 #bipartite_no_pose_rank_cut_4_coreset_RAND_ENCODED.pkl
 #bipartite_no_pose_rank_cut_4_coreset_RAND_ENCODED_POSERANK
-with open(f'{config.data}/bipartite_no_pose_rank_cut_4_REFINED_RAND_ENCODED_POSERANK_3_plus.pkl', 'rb') as file:
+with open(f'{config.data}/bipartite_data_no_pose_rank_NOT_sorted_by_family_cut_4_coreset_1_RAND.pkl', 'rb') as file:
 
     dataset_list = pickle.load(file)
 
@@ -80,7 +97,7 @@ filtered_data_list_num_nodes = [data for data in dataset_list if data.num_nodes 
 filtered_data_list_descriptors = [data for data in filtered_data_list_num_nodes if
                                   data.x_s.shape[0] > 0 and data.x_t.shape[0] > 0]
 filtered_data_list = filtered_data_list_descriptors#[0:1800]
-
+#random.shuffle(filtered_data_list)
 #### Data info
 label_distribution = dict(Counter([label.y.tolist() for label in filtered_data_list]))
 amount_of_graphs_used_to_train = len(filtered_data_list)
@@ -120,29 +137,27 @@ from torch_geometric.nn import global_mean_pool
 class GATModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size):
         super(GATModel, self).__init__()
-        self.conv1 = GATConv(in_channels=input_dim, out_channels=600, heads=2)
+        self.conv1 = GATConv(in_channels=input_dim, out_channels=50, heads=2)
         #self.conv2 = GATConv(in_channels=100, out_channels=hidden_dim, heads=1)
-        self.fc1 = nn.Linear(600*2, 10)
+        self.fc1 = nn.Linear(50*2, 1)
         
-        self.fc3 = nn.Linear(10, 1)
+        #self.fc3 = nn.Linear(10, 1)
         self.dropout = nn.Dropout(0.1)
 
     def forward(self, data):
         x_s, x_t, edge_index, distances, x_t_batch, x_s_batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.x_t_batch, data.x_s_batch
+        print('x_s shape',x_s.shape)
+        print('x_t shape', x_t.shape)
         x_new_t = self.conv1((x_s, x_t), edge_index, size=(x_s.size(0), x_t.size(0)), edge_attr=distances)
+        print('x shape after conv1', x_new_t.shape)
         x = torch.relu(x_new_t)
-
-        ##########3
-        #x_new_s = self.conv2((x_t, x_s), edge_index[torch.tensor([1, 0])], size=(x_t.size(0), x_s.size(0)), edge_attr=distances)
-        #x = torch.relu(x_new_s)
-        #####################
+        print('x shape after Relu', x.shape)
         x = global_mean_pool(x, x_s_batch)
+        print('x shape after global_mean_pool', x.shape)
         x = self.fc1(x)
-        #x = self.fc2(x)
+        print('x shape after fc1', x.shape)
+        print('x shape after squeeze', x.squeeze().shape)
 
-        #x = self.dropout(x)
-        x = self.fc3(x)
-        #print('x: ', x)
         return x.squeeze()
 # Training and validation functions
 def train():
@@ -193,13 +208,13 @@ def validate_model(model, val_loader, criterion):
     return val_loss / len(
         val_loader.dataset), accuracy, precision, recall, f1, balanced_acc, auc_roc, neg_precision, neg_recall, TN, FN, TP, FP, auc_pr
 
-
+pos_weight = config.model_args["pos_weight"]
 # Initialize the model
-model = GATModel(input_dim=11, hidden_dim=11, batch_size=config.model_args["batch_size"])
-criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(11)) # original: 11.5 # 15 #
+model = GATModel(input_dim=7, hidden_dim=7, batch_size=config.model_args["batch_size"])
+criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(pos_weight)) #13#12.34# original: 11.5 # 15 #
 optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'], weight_decay=0.01)
-train_loader = DataLoader(filtered_data_list[:943], batch_size=config.model_args["batch_size"], shuffle=False, follow_batch=['x_s', 'x_t'])
-test_loader = DataLoader(filtered_data_list[943:], batch_size=config.model_args["batch_size"], shuffle=False, follow_batch=['x_s', 'x_t'])
+train_loader = DataLoader(filtered_data_list[:1500], batch_size=config.model_args["batch_size"], shuffle=False, follow_batch=['x_s', 'x_t'])
+test_loader = DataLoader(filtered_data_list[1500:], batch_size=config.model_args["batch_size"], shuffle=False, follow_batch=['x_s', 'x_t'])
 #[22121:27650]
 #[1500:1900]
 #[1080:]
@@ -210,9 +225,10 @@ if not os.path.exists('../results/df_metrics.csv'):
 
 existing_df = pd.read_csv("../results/df_metrics.csv").reset_index(drop=True)
 
-best_auc_pr = float('-inf')  # Inicializa a melhor pontuação de AUC-PR como negativa infinita
-best_model_path = "../Model/best_model.pt"  # Caminho para salvar o melhor modelo
+best = float('-inf')  # Inicializa a melhor pontuação de AUC-PR como negativa infinita
+best_model_path = f"../Model/models_pt/{model_name}.pt"  # Caminho para salvar o melhor modelo
 
+param = "f1"
 # Training loop
 for epoch in range(1, config.model_args['epochs']):
     train_loss = train()
@@ -223,7 +239,14 @@ for epoch in range(1, config.model_args['epochs']):
               'auc_pr:', auc_pr, 'f1: ',f1, 'auc_roc:', auc_roc)
 
     existing_df = existing_df.append(
-        {'Fold': "1"
+        {   'opt param' : param
+            ,'model_name':model_name
+            ,'Model Args':config.model_args
+            ,'descricao':descricao
+            ,'batch':config.model_args['batch_size']
+            ,'Distribution':label_distribution
+            ,'Qtd_graphs':amount_of_graphs_used_to_train
+            ,'Fold': "1"
             , 'Epoch': epoch + 1
             , 'Validation Loss': val_loss
             , 'Train Loss': train_loss
@@ -237,42 +260,17 @@ for epoch in range(1, config.model_args['epochs']):
          },
         ignore_index=True)
 
-    if auc_pr > best_auc_pr:
+    metric = f1
+    if metric > best:
         torch.save(model.state_dict(), best_model_path)
-        best_auc_pr = auc_pr
-        print("Best model saved with AUC-PR:", best_auc_pr)
+        best = metric
+        print(f"Best model saved with {param}:", metric)
 
 df = existing_df.copy()
-def get_and_increment_counter(counter_file):
-    if os.path.exists(counter_file):
-        with open(counter_file, "r") as file:
-            counter = int(file.read())
-    else:
-        counter = 1
-
-    with open(counter_file, "w") as file:
-        file.write(str(counter + 1))
-
-    return counter
 
 
-counter_file = "counter_file.txt"
-counter = get_and_increment_counter(counter_file)
-model_name = f"model_{counter}"
-
-df['Model Args'] = [config.model_args] * len(df)
-df['Docking Params'] = [config.docking_params] * len(df)
-df['class_def'] = [config.label_args['class_def']] * len(df)
-df['batch'] = [config.model_args['batch_size']] * len(df)
-df["gmp"] = [config.model_args["gmp"]] * len(df)
-df['Model name'] = model_name
-df['Distribution'] = [label_distribution] * len(df)  # You need to define label_distribution
-df['Qtd_graphs'] = [amount_of_graphs_used_to_train] * len(df)  # You need to define amount_of_graphs_used_to_train
-df['node_descriptors'] = [config.node_descriptors] * len(df)
-df['descricao'] = [descricao]*len(df)
-print('Saved')
-
-final = pd.concat([existing_df, df], axis=1)
-final.to_csv("../results/df_metrics.csv", index=False)
+#final = pd.concat([existing_df, df], axis=0)
+df.to_csv("../results/df_metrics.csv", index=False)
 
 
+print(model_name)

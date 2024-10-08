@@ -16,22 +16,22 @@ class Config():
         if not os.path.exists(f"{self.root}/{self.project_name}/processed_dir"):
             os.makedirs(f"{self.root}/{self.project_name}/processed_dir")
 
-        self.set = f"{self.root}/set"
+        self.set = f"{self.root}/coreset_100"
         self.data = f"{self.root}/{self.project_name}/Data"
 
         if not os.path.exists(f"{self.data}"):
             os.makedirs(f"{self.data}")
         #self.pdb_list = pd.read_csv(f"../Datahub/pdbs_refined_set.csv")['PDB code'].to_list()[1:500]
-        self.pdb_list = os.listdir('../set')#[:3]# ["4bps"] #for test
+        self.pdb_list = os.listdir('../coreset_100')#[:3]# ["4bps"] #for test
         self.model_args = {'seed': 42,
                            'savepath': f'{self.root}/{self.project_name}/',
-                           'batch_size': 250*10,
-                           'epochs': 300*2,
+                           'batch_size': 250,  #250
+                           'epochs': 500 ,#300*2,
                            'nfolds': 3,
                            'patience': 15,
-                           "lr": 0.01,  # 0.05,
+                           "lr": 0.05, #0.05,  # 0.05,
                            "gmp": 10,
-                           }
+                           'pos_weight': 13.5}
         # 250*10 Valor usado para refiened set
         self.label_args = {'class_def': "rmsd",
                            }
@@ -46,7 +46,7 @@ class Config():
 
         self.docking_params = {'exhaustiveness': 50,
                                'buffer_size': 10,
-                               'nposes': 10}
+                               'nposes': 100}
         self.softwares = "../executables"
         self.executables = {'vina': f"{self.softwares}/vina_1.2.5_linux_x86_64",
                             "binana": f"{self.softwares}/binana-2.1/python/run_binana.py"}
