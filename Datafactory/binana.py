@@ -7,7 +7,7 @@ from BindRanker.Config import Config
 
 config = Config()
 
-pdbs = os.listdir(config.set) # ['1uz8']#
+pdbs = os.listdir(config.set)
 nposes = config.docking_params['nposes']
 path_scripts = Path(os.getcwd())
 binana_executable = config.executables['binana']
@@ -18,7 +18,6 @@ def binana(pdb, config):
     os.system(binana_exec_cmd)
 
 receptor = "protein_fixed.pdb"
-#receptor = 'protein.pdb'
 start_time = time.time()  # Record start time
 
 # Combined loop for both versions

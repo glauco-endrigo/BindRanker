@@ -2,6 +2,9 @@ import os
 import csv
 from tqdm import tqdm
 from BindRanker.Config import Config
+from rdkit import Chem
+from rdkit.Chem import AllChem
+from timeout_decorator import timeout, TimeoutError
 #from Config import Config
 
 config = Config()
@@ -16,11 +19,6 @@ os.makedirs(data_directory, exist_ok=True)
 csv_exists = os.path.exists(csv_file_path)
 print(csv_exists)
 
-from rdkit import Chem
-from rdkit.Chem import AllChem
-from timeout_decorator import timeout, TimeoutError
-
-
 @timeout(15, use_signals=False)
 def calculate_rmsd(docked_ligand_path, crystal_ligand_path):
     docked_ligand = Chem.MolFromPDBFile(docked_ligand_path)
@@ -33,7 +31,6 @@ def calculate_rmsd(docked_ligand_path, crystal_ligand_path):
             crystal_ligand = Chem.RemoveHs(crystal_ligand)
 
             # Calculate RMSD
-
             rmsd = AllChem.CalcRMS(docked_ligand, crystal_ligand)
             return rmsd
         except Exception as e:

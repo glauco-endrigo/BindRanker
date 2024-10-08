@@ -16,7 +16,6 @@ pdb_list = config.pdb_list[100:]#
 @timeout(30, use_signals=False)
 def fix_pdb_structure(pdb_code):
     print('Trying to fix: ',pdb_code)
-    # Specify the input and output PDB files
     input_file = f'{config.set}/{pdb_code}/{pdb_code}_protein.pdb'
     output_file = f'{config.set}/{pdb_code}/{pdb_code}_protein_fixed.pdb'
     try:
@@ -26,21 +25,13 @@ def fix_pdb_structure(pdb_code):
         print("Error when opening protein.pdb")
     # Create a PDBFixer instance
     pdbfixer = PDBFixer(filename=input_file)
-
-    # Apply fixes
     pdbfixer.findMissingResidues()
     pdbfixer.findMissingAtoms()
     pdbfixer.addMissingAtoms()
-
     pdbfixer.addMissingHydrogens(7.0)  # Assuming a pH of 7.0
-
-    # Convert non-standard residues to their standard equivalents
     pdbfixer.findNonstandardResidues()
     pdbfixer.replaceNonstandardResidues()
-
-    # Delete unwanted heterogens
     pdbfixer.removeHeterogens(keepWater=False)  # Keeping water molecules
-
     # Save the corrected structure
     PDBFile.writeFile(pdbfixer.topology, pdbfixer.positions, open(output_file, 'w'))
 

@@ -39,7 +39,6 @@ class Config():
             , "Charge"
             , "Element_Name"
             , "Hybridization"
-            , "Num_Hydrogens"
             , "Formal_Charge"
             , "Unpaired_Electron"
             , "In_Aromatic_Substructure"]
