@@ -68,44 +68,26 @@ class BipartiteData(Data):
         else:
             return super().__inc__(key, value, *args, **kwargs)
 
-#bipartite_data tesded, worked
-#bipartite_data_name_normalized: worked too!
-#bipartite_data_with_pose_pred
-#bipartite_data_with_pose_pred_sorted_by_family_encode
-#bipartite_data_no_pose_rank_sorted_by_family
-# bipartite_data_no_pose_rank_sorted_by_family_cut_3.5
-#bipartite_data_no_pose_rank_sorted_by_family_cut_4_refined_set_encoded
-#bipartite_data_no_pose_rank_NOT_sorted_by_family_cut_4_coreset_encoded_1
-#bipartite_data_no_pose_rank_NOT_sorted_by_family_cut_4_coreset_1
-#bipartite_data_shuffle
-#bipartite_data_no_pose_rank_NOT_sorted_by_family_cut_4_coreset_1_RAND
-#bipartite_data_no_pose_rank_cut_4_refined_set_encoded_RAND
-#bipartite_data_no_pose_rank_cut_4_refined_set_encoded_RAND_RAND_SLICE
-# DATAVALIDATION_1321_SHOULD_WORK
-# To load the data back with the correct data types
 ##############################################################################333
-##############################################################################
-#bipartite_no_pose_rank_cut_4_coreset_RAND_ENCODED.pkl
-#bipartite_no_pose_rank_cut_4_coreset_RAND_ENCODED_POSERANK
 with open(f'{config.data}/bipartite_data_no_pose_rank_NOT_sorted_by_family_cut_4_coreset_1_RAND.pkl', 'rb') as file:
 
     dataset_list = pickle.load(file)
 
-##### Filter data list
+
 filtered_data_list_num_nodes = [data for data in dataset_list if data.num_nodes > 0]
-##### Filter data list
+
 filtered_data_list_descriptors = [data for data in filtered_data_list_num_nodes if
                                   data.x_s.shape[0] > 0 and data.x_t.shape[0] > 0]
 filtered_data_list = filtered_data_list_descriptors#[0:1800]
 #random.shuffle(filtered_data_list)
+
 #### Data info
 label_distribution = dict(Counter([label.y.tolist() for label in filtered_data_list]))
 amount_of_graphs_used_to_train = len(filtered_data_list)
 
 ## Dataset info
-
 print(65 * "*")
-# print("Nº Pdbs:", len(pdbs))
+print("Nº Pdbs:", len(pdbs))
 print("Nº BipartiteData objects:", len(dataset_list))
 print("Nº BipartiteData objects filtered by num_nodes > 0: ", len(filtered_data_list_num_nodes))
 print("Nº BipartiteData objects filtered by has descriptors > 0:", len(filtered_data_list_descriptors))
@@ -146,17 +128,17 @@ class GATModel(nn.Module):
 
     def forward(self, data):
         x_s, x_t, edge_index, distances, x_t_batch, x_s_batch = data.x_s, data.x_t, data.edge_index, data.edge_attr, data.x_t_batch, data.x_s_batch
-        print('x_s shape',x_s.shape)
-        print('x_t shape', x_t.shape)
+        #print('x_s shape',x_s.shape)
+        #print('x_t shape', x_t.shape)
         x_new_t = self.conv1((x_s, x_t), edge_index, size=(x_s.size(0), x_t.size(0)), edge_attr=distances)
-        print('x shape after conv1', x_new_t.shape)
+        #print('x shape after conv1', x_new_t.shape)
         x = torch.relu(x_new_t)
-        print('x shape after Relu', x.shape)
+        #print('x shape after Relu', x.shape)
         x = global_mean_pool(x, x_s_batch)
-        print('x shape after global_mean_pool', x.shape)
+        #print('x shape after global_mean_pool', x.shape)
         x = self.fc1(x)
-        print('x shape after fc1', x.shape)
-        print('x shape after squeeze', x.squeeze().shape)
+        #print('x shape after fc1', x.shape)
+        #print('x shape after squeeze', x.squeeze().shape)
 
         return x.squeeze()
 # Training and validation functions
@@ -215,9 +197,6 @@ criterion = BalancedBCEWithLogitsLoss(pos_weight=torch.tensor(pos_weight)) #13#1
 optimizer = optim.Adam(model.parameters(), lr=config.model_args['lr'], weight_decay=0.01)
 train_loader = DataLoader(filtered_data_list[:1500], batch_size=config.model_args["batch_size"], shuffle=False, follow_batch=['x_s', 'x_t'])
 test_loader = DataLoader(filtered_data_list[1500:], batch_size=config.model_args["batch_size"], shuffle=False, follow_batch=['x_s', 'x_t'])
-#[22121:27650]
-#[1500:1900]
-#[1080:]
 
 if not os.path.exists('../results/df_metrics.csv'):
     empty_df = pd.DataFrame(columns=['Epoch', 'Validation Loss', 'Train Loss' ])
@@ -268,8 +247,6 @@ for epoch in range(1, config.model_args['epochs']):
 
 df = existing_df.copy()
 
-
-#final = pd.concat([existing_df, df], axis=0)
 df.to_csv("../results/df_metrics.csv", index=False)
 
 
