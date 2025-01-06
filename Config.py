@@ -26,12 +26,14 @@ class Config():
         self.model_args = {'seed': 42,
                            'savepath': f'{self.root}/{self.project_name}/',
                            'batch_size': 250,  #250
-                           'epochs': 500 ,#300*2,
+                           'epochs':250, #500 ,#300*2,
                            'nfolds': 3,
                            'patience': 15,
                            "lr": 0.05, #0.05,  # 0.05,
                            "gmp": 10,
-                           'pos_weight': 13.5}
+                           'pos_weight': 15,#13.5,
+                           'weight_decay':0.005,
+                           "stratify": True}
         # 250*10 Valor usado para refiened set
         self.label_args = {'class_def': "rmsd",
                            }
